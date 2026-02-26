@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_XpExternalSetPoint" Id="{01d603d0-216f-4526-8cc8-d3aebcd56c1a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_XpExternalSetPoint
+VAR_IN_OUT
+	XpMover							: MC_PlanarMover;
+	McArrayAxis						: ARRAY [1..6] OF AXIS_REF;
+END_VAR
+VAR_INPUT
+	enable							: BOOL;
+	modeExteanlSetPoint				: MC_EXTERNAL_SET_POSITION_MODE;
+END_VAR
+VAR_OUTPUT
+	valid							: BOOL;
+	busy							: BOOL;
+	error							: BOOL;
+	aborted							: BOOL;
+END_VAR
+VAR
+	_XpFeedback						: ARRAY [0.._MAX_XPLANAR_FEEDBACK] OF MC_PlanarFeedback;
+END_VAR
+VAR
+	_sequence						: UINT;
+	_i								: UINT;
+	_countError						: UINT;
+	_SetPosition					: MoverVector;
+	_SetVelocity					: MoverVector;
+	_SetAcceleration				: MoverVector;
+	_OptionsExternalSetPosition		: ST_ExternalSetpointGenerationOptions;
+END_VAR
+VAR CONSTANT
+	_MAX_XPLANAR_FEEDBACK			: UINT := 1;
+	_MAX_COUNT_ERROR				: UINT := 5;
+	
+	_INIT							: UINT := 0000;
+	_READY							: UINT := 0001;
+	_START_EXTERNAL_SET_POSITION	: UINT := 0011;
+	_CHECK_START_EXTERNAL_SET_POSITION	: UINT := 0012;
+	_SET_POSITION					: UINT := 0013;
+	_STOP_EXTERNAL_SET_POINT		: UINT := 0014;
+	_CHECK_STOP_EXTERNAL_SET_POINT	: UINT := 0015;
+	_DONE							: UINT := 1000;
+	_ERROR							: UINT := 2000;
+	_ABORTED						: UINT := 3000;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[updateXPlanarFB();
+updateReadStatus();
+CASE _sequence OF
+	_INIT:
+		_sequence := _READY;
+
+	_READY:
+		IF enable THEN 
+			_sequence := _START_EXTERNAL_SET_POSITION; 
+			busy := TRUE;
+			error := FALSE;
+		END_IF
+
+	_START_EXTERNAL_SET_POSITION:
+		_OptionsExternalSetPosition.mode := modeExteanlSetPoint;
+		XpMover.StartExternalSetpointGeneration(commandFeedback:= _XpFeedback[0], options:= _OptionsExternalSetPosition);
+		_sequence := _CHECK_START_EXTERNAL_SET_POSITION;
+	
+	_CHECK_START_EXTERNAL_SET_POSITION:
+		IF _XpFeedback[0].Done THEN _sequence := _SET_POSITION; END_IF
+	
+	_SET_POSITION:
+		valid := TRUE;
+		_SetPosition.x := McArrayAxis[1].NcToPlc.ActPos;
+		_SetPosition.y := McArrayAxis[2].NcToPlc.ActPos;
+		_SetPosition.z := McArrayAxis[3].NcToPlc.ActPos;
+		_SetPosition.a := McArrayAxis[4].NcToPlc.ActPos;
+		_SetPosition.b := McArrayAxis[5].NcToPlc.ActPos;
+		_SetPosition.c := McArrayAxis[6].NcToPlc.ActPos;
+		
+		_SetVelocity.x := McArrayAxis[1].NcToPlc.ActVelo;
+		_SetVelocity.y := McArrayAxis[2].NcToPlc.ActVelo;
+		_SetVelocity.z := McArrayAxis[3].NcToPlc.ActVelo;
+		_SetVelocity.a := McArrayAxis[4].NcToPlc.ActVelo;
+		_SetVelocity.b := McArrayAxis[5].NcToPlc.ActVelo;
+		_SetVelocity.c := McArrayAxis[6].NcToPlc.ActVelo;
+		
+		_SetAcceleration.x := McArrayAxis[1].NcToPlc.ActAcc;
+		_SetAcceleration.y := McArrayAxis[2].NcToPlc.ActAcc;
+		_SetAcceleration.z := McArrayAxis[3].NcToPlc.ActAcc;
+		_SetAcceleration.a := McArrayAxis[4].NcToPlc.ActAcc;
+		_SetAcceleration.b := McArrayAxis[5].NcToPlc.ActAcc;
+		_SetAcceleration.c := McArrayAxis[6].NcToPlc.ActAcc;
+		
+		XpMover.SetExternalSetpoint(
+			setPosition:= _SetPosition, 
+			setVelocity:= _SetVelocity, 
+			setAcceleration:= _SetAcceleration);
+		
+		IF NOT enable THEN
+			_sequence := _STOP_EXTERNAL_SET_POINT;
+		END_IF
+	
+	_STOP_EXTERNAL_SET_POINT:
+		XpMover.StopExternalSetpointGeneration(commandFeedback:= _XpFeedback[1]);
+		_sequence := _CHECK_STOP_EXTERNAL_SET_POINT;
+	
+	_CHECK_STOP_EXTERNAL_SET_POINT:
+		IF _XpFeedback[1].Done THEN _sequence := _DONE; END_IF
+		
+	_DONE:
+		valid := FALSE;
+		busy := FALSE;
+		_sequence := _READY;
+		
+	_ERROR:
+		valid := FALSE;
+		busy := FALSE;
+		error := TRUE;
+		_sequence := _READY;
+END_CASE
+]]></ST>
+    </Implementation>
+    <Action Name="updateReadStatus" Id="{695ccd44-a2b3-44aa-9d5b-8081f1067f63}">
+      <Implementation>
+        <ST><![CDATA[FOR _i:=1 TO 6 DO
+	McArrayAxis[_i].ReadStatus();
+END_FOR]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="updateXPlanarFB" Id="{5a4ef756-9329-46e9-a49b-69b4a05720ec}">
+      <Implementation>
+        <ST><![CDATA[FOR _i:=0 TO _MAX_XPLANAR_FEEDBACK DO
+	_XpFeedback[_i].Update();
+END_FOR]]></ST>
+      </Implementation>
+    </Action>
+  </POU>
+</TcPlcObject>

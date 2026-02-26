@@ -1,0 +1,141 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_XpMoveTrack" Id="{248fd215-03f2-4f03-8e81-89176075e262}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_XpMoveTrack
+VAR_IN_OUT
+	XpMover							: MC_PlanarMover;
+	XpTrack							: MC_PlanarTrack;
+END_VAR
+VAR_INPUT
+	execute							: BOOL;
+	distance						: LREAL := 160;
+	velocity						: LREAL := 100;
+	acceleration					: LREAL := 2000;
+	jerk							: LREAL := 20000;
+	gap								: LREAL := 300;
+	gapmode							: MC_GAP_MODE_ON_TRACK := MC_GAP_MODE_ON_TRACK.Standard1D;
+END_VAR
+VAR_OUTPUT
+	done							: BOOL;
+	busy							: BOOL;
+	error							: BOOL;
+	aborted							: BOOL;
+END_VAR
+VAR
+	_XpFeedback						: ARRAY [0.._MAX_XPLANAR_FEEDBACK] OF MC_PlanarFeedback;
+	_XpCondition		 			: DynamicConstraint_PathXY;
+	_XpOptionMoveOnTrack			: ST_MoveOnTrackOptions;
+END_VAR
+VAR
+	_sequence						: UINT;
+	_i								: UINT;
+	_countError						: UINT;
+	_distance						: LREAL;
+	_velocity						: LREAL;
+	_acceleration					: LREAL;
+	_jerk							: LREAL;
+	_gap							: LREAL;
+	_gapmode						: MC_GAP_MODE_ON_TRACK;
+END_VAR
+VAR CONSTANT
+	_MAX_XPLANAR_FEEDBACK			: UINT := 1;
+	_MAX_COUNT_ERROR				: UINT := 5;
+	
+	_INIT							: UINT := 0000;
+	_READY							: UINT := 0001;
+	_MOVE_ON_TRACK					: UINT := 0011;
+	_CHECK_MOVE_ON_TRACK			: UINT := 0012;
+	_DONE							: UINT := 1000;
+	_ERROR							: UINT := 2000;
+	_ABORTED						: UINT := 3000;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[updateXPlanarFB();
+CASE _sequence OF
+	_INIT:
+		_sequence := _READY;
+		
+	_READY:
+		IF execute THEN
+			busy := TRUE;
+			_sequence := _MOVE_ON_TRACK;
+			setInputVariables();
+		END_IF
+		
+	_MOVE_ON_TRACK:
+		_XpCondition.SetValuesVADJ(
+			V:= _velocity, 
+			A:= _acceleration, 
+			D:= _acceleration, 
+			J:= _jerk);
+		_XpOptionMoveOnTrack.gap := _gap;
+		_XpOptionMoveOnTrack.gapMode := _gapmode;
+		XpMover.MoveOnTrack(commandFeedback:= _XpFeedback[0], 
+			targetTrack:= XpTrack, 
+			targetPositionOnTrack:= _distance, 
+			constraint:= _XpCondition, 
+			options:= _XpOptionMoveOnTrack);
+		_sequence := _CHECK_MOVE_ON_TRACK;
+		
+	_CHECK_MOVE_ON_TRACK:
+		IF _XpFeedback[0].Done THEN
+			_countError := 0;
+			_sequence := _DONE;
+		ELSIF _XpFeedback[0].Error THEN
+			_countError := _countError + 1;
+			_sequence := _MOVE_ON_TRACK;
+		ELSIF _XpFeedback[0].Aborted THEN
+			_countError := 0;
+			_sequence := _ABORTED;
+		END_IF
+		IF _countError > _MAX_COUNT_ERROR THEN
+			_countError := 0;
+			_sequence := _ERROR;
+		END_IF
+		
+	_DONE:
+		done := TRUE;
+		busy := FALSE;
+		IF NOT execute THEN
+			done := FALSE;
+			_sequence := _READY;
+		END_IF
+	
+	_ERROR:
+		error := TRUE;
+		busy := FALSE;
+		IF NOT execute THEN
+			error := FALSE;
+			_sequence := _READY;
+		END_IF
+		
+	_ABORTED:
+		aborted := TRUE;
+		busy := FALSE;
+		IF NOT execute THEN
+			aborted := FALSE;
+			_sequence := _READY;
+		END_IF
+END_CASE]]></ST>
+    </Implementation>
+    <Action Name="setInputVariables" Id="{3d7b64d9-1bc7-4625-a5c8-3e6dc3c96521}">
+      <Implementation>
+        <ST><![CDATA[_distance := distance;
+_velocity := velocity;
+_acceleration := acceleration;
+_jerk := jerk;
+_gap := gap;
+_gapmode := gapmode;
+
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="updateXPlanarFB" Id="{ad09fc4e-d568-419d-b596-15ea4e46a7da}">
+      <Implementation>
+        <ST><![CDATA[FOR _i:=0 TO _MAX_XPLANAR_FEEDBACK DO
+	_XpFeedback[_i].Update();
+END_FOR]]></ST>
+      </Implementation>
+    </Action>
+  </POU>
+</TcPlcObject>

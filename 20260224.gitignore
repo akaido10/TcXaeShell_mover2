@@ -1,0 +1,17 @@
+*_Boot/
+*_CompileInfo/
+LineIds.obj
+*_.tpy/
+*_.tpj/
+*_.bak/
+*_.tmp/
+*_.log/
+
+.vs/
+bin/
+obj/
+*.suo
+*.user
+*.userprefs
+
+_Config/IO/Device */

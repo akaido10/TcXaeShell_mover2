@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_XPlanarAutoScan" Id="{c079939f-f879-4aee-a42e-82c2b481d157}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_XPlanarAutoScan
+VAR_INPUT
+    bExecute    : BOOL; 
+END_VAR
+VAR_OUTPUT
+    bBusy       : BOOL;
+    bDone       : BOOL;
+    bError      : BOOL;
+END_VAR
+VAR
+    nState      : INT := 0;
+    rtExecute   : R_TRIG;
+    
+    fbEnv       : FB_TcIoXPlanarEnvironment;
+    ipXpu       : I_TcIoXPlanarProcessingUnit;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtExecute(CLK := bExecute);
+
+IF rtExecute.Q THEN
+    bBusy  := TRUE;
+    bDone  := FALSE;
+    bError := FALSE;
+    nState := 10; 
+END_IF
+
+CASE nState OF
+    0: //wait
+
+    10: 
+        IF fbEnv.Init(bExecute := TRUE) THEN
+            nState := 20;
+        END_IF
+
+    20: 
+        ipXpu := fbEnv.TcIoXpu(nNum := 1); 
+        
+        IF ipXpu <> 0 THEN
+            nState := 30;
+        ELSE
+            bError := TRUE;
+            bBusy  := FALSE;
+            nState := 0;
+        END_IF
+
+    30: 
+        IF ipXpu.SetCoordMoverCommunicationCmd(CoordinatedMoverCommCommand.IdentifyAndAssignPossible) THEN
+            bBusy  := FALSE;
+            bDone  := TRUE;
+            nState := 0;
+        END_IF
+        
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

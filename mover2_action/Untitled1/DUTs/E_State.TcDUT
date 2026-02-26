@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="E_State" Id="{0f0b0606-c0aa-4d5c-a291-238893cbf30b}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE E_State :
+(
+	INIT:=0,
+	EnableMover,
+	EnableCheck,
+	Zmove,
+	AddToGroup,
+	EnableComp,
+	DisableMover,
+	DisableCheck,
+	DisableComp,
+	ERROR
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>
