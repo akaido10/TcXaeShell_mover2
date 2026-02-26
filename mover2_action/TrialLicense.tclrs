@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<TcLicenseInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2011/11/TcLicenseInfo">
+	<LicenseInfo>
+		<SystemId>{1D993DC2-E447-CC3D-D73E-A96EF01DD1DE}</SystemId>
+		<IssueTime>2026-02-26T00:53:00</IssueTime>
+		<ExpireTime>2026-03-05T00:00:00</ExpireTime>
+		<LicenseKey>bc26fa441c2d8752f32968d161324b8006fb5873d3fb95dd343c5ae7a0d5e9645dd493393dc2d14a27c8863142ea67aaf4691322b72545437211f9e27666a7e9017eeb4009bf79494906ab9738b7628d690ce9c4e77f0f3c5eeec6a28ab53858a037143412bc7cfd9221dafedd7c34b0ee71df0b8e3b54760565d8fab0fa48eb4494e5a24b0805c5ceb25f398afc0c88fde4270069c8f31fd778f50887435c1ce966dbe653fd7583d2d00a539c12983858331097d2de299a17e212ee35bb8973c3dbef29282a51597d8ea761a22bfbfb184e4e185f7dc4af85eda9b7c96ebecf4e4047e24641b5ea8543d6a15daaacc954018b19b17100ed2dda218ab7f8db17</LicenseKey>
+		<License>
+			<LicenseId>{C2F58FAE-EB3E-4252-A3D4-E912569E6EFC}</LicenseId>
+			<Name>TC3 Planar Motion Base</Name>
+			<OrderNo>TF5430</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{C13CAEC7-1F41-4491-935E-FF6254005C74}</LicenseId>
+			<Name>TC3 Physics Base</Name>
+			<OrderNo>TF5440</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{C362DA3A-1771-4019-9AF9-F39972E4A76D}</LicenseId>
+			<Name>TC3 XPlanar Technology</Name>
+			<OrderNo>TF5890</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{081AC839-28D0-49CA-9792-72680E1F3249}</LicenseId>
+			<Name>TC3 TCP/UDP RT</Name>
+			<OrderNo>TF6311</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{AE83F222-BB78-448F-BDED-7494A70CD776}</LicenseId>
+			<Name>TC3 EtherNet/IP Adapter (Slave)</Name>
+			<OrderNo>TF6280</OrderNo>
+			<Instances>1</Instances>
+		</License>
+		<License>
+			<LicenseId>{577D032C-921A-4978-B163-B35640A4CFE6}</LicenseId>
+			<Name>TC3 MC3 Axis</Name>
+			<Instances>10</Instances>
+		</License>
+		<License>
+			<LicenseId>{C93D4D9B-FB43-43A4-8D9E-5F885F636D83}</LicenseId>
+			<Name>TC3 MC3 Multi Vendor</Name>
+			<Instances>5</Instances>
+		</License>
+		<License>
+			<LicenseId>{5CFA659E-6740-4567-A7FB-C2676C278AAE}</LicenseId>
+			<Name>TC3 MC3 Base</Name>
+			<OrderNo>TF5500</OrderNo>
+		</License>
+	</LicenseInfo>
+</TcLicenseInfo>
