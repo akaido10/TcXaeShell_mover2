@@ -108,13 +108,9 @@ VAR
 	bInitScan	: BOOL := TRUE;
 END_VAR]]></Declaration>
     <Implementation>
-      <ST><![CDATA[//initial();
-update();
+      <ST><![CDATA[update();
 condition();
 initial2();
-//MainProgram1();
-//MainProgram2();
-//InitialProgram();
 ManualMove();
 VisualizationVariable();
 MainProgram();
@@ -298,141 +294,6 @@ IF exeXpEnableTrack THEN
 END_IF]]></ST>
       </Implementation>
     </Action>
-    <Action Name="InitialProgram" Id="{cfb23324-16d0-4831-b8fb-c7769ca8602b}">
-      <Implementation>
-        <ST><![CDATA[IF exestart THEN
-	InitialSequence :=1;
-END_IF
-
-FOR i:=1 TO 2 DO
-	IF XpFeedback[i][0].ErrorId = 33158 THEN
-	FirstCollisionError[i] := TRUE;
-ELSE 
-	FirstCollisionError[i] := FALSE;	
-END_IF
-END_FOR
-
-CASE InitialSequence OF
-	1:	//Init
-	IF bMoverEnable[0] AND exestart THEN
-		exestart :=FALSE;
-		IF XpMover[1].MCTOPLC.ACT.ActPos.x < XpMover[2].MCTOPLC.ACT.ActPos.x THEN
-			InitialSequence := 2;
-		ELSE
-			InitialSequence := 5;
-		END_IF
-	END_IF
-	
-	2:
-	XpMover[1].JoinTrack(commandFeedback:= XpFeedback[1][0], 
-				targetTrack:= XpTrack[1], constraint:= constraint[1], options:= stOption_j[1]);
-	iPriMover:=1;
-	InitialSequence := 3;
-	
-	3:
-	IF XpFeedback[1][0].Done THEN
-		XpMover[2].JoinTrack(commandFeedback:= XpFeedback[2][0], 
-				targetTrack:= XpTrack[2], constraint:= constraint[2], options:= stOption_j[2]);
-		InitialSequence :=12;
-	END_IF
-
-	5:
-	XpMover[2].JoinTrack(commandFeedback:= XpFeedback[2][0], 
-			targetTrack:= XpTrack[1], constraint:= constraint[2], options:= stOption_j[2]);
-	InitialSequence:=6;
-	iPriMover:=2;
-	
-	6:
-	IF XpFeedback[2][0].Done THEN
-		XpMover[1].JoinTrack(commandFeedback:= XpFeedback[1][0], 
-				targetTrack:= XpTrack[2], constraint:= constraint[1], options:= stOption_j[1]);
-		InitialSequence :=12;								
-	END_IF
-
-	
-	12: //Join check
-	FOR i:=1 TO 2 DO
-	IF XpFeedback[i][0].Done THEN
-		JoinState[i] := TRUE;
-	END_IF
-	END_FOR
-	IF JoinState[1] AND JoinState[2] THEN
-		InitialSequence := 13;
-		JoinState[1]  := FALSE;
-		JoinState[2]  := FALSE;
-	ELSE
-		InitialSequence := 12;
-
-	END_IF
-
-	
-	13:
-	IF iPriMover=1 THEN //Mover1をTrack1の端に移動
-		XpMover[1].MoveOnTrack(
-		commandFeedback:= XpFeedback[1][1], 
-		targetTrack:= XpTrack[1], 
-		targetPositionOnTrack:= Xptrack[1].GetLength(), 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
-		ELSE //Mover2をTrack1の端に移動
-		XpMover[2].MoveOnTrack(
-		commandFeedback:= XpFeedback[2][1], 
-		targetTrack:= XpTrack[1], 
-		targetPositionOnTrack:= Xptrack[1].GetLength(), 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-	END_IF
-		InitialSequence :=14;
-	14:
-	nMoverCount := XpTrack[1].MCTOPLC_STD.MoverCountOnTrack;
-	IF nMoverCount=1 THEN
-		InitialSequence :=15;
-	END_IF
-	
-	15:
-		IF iPriMover=1 THEN //Mover2をTrack1の端に移動
-		XpMover[2].MoveOnTrack(
-		commandFeedback:= XpFeedback[2][1], 
-		targetTrack:= XpTrack[1], 
-		targetPositionOnTrack:= Xptrack[1].GetLength(), 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-		ELSE //Mover1をTrack1の端に移動
-		XpMover[1].MoveOnTrack(
-		commandFeedback:= XpFeedback[1][1], 
-		targetTrack:= XpTrack[1], 
-		targetPositionOnTrack:= Xptrack[1].GetLength(), 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
-	END_IF
-		InitialSequence :=16;
-		
-	16:
-	nMoverCount := XpTrack[1].MCTOPLC_STD.MoverCountOnTrack;
-	IF nMoverCount=2 AND XpFeedback[1][1].Done AND XpFeedback[2][1].Done THEN
-		InitialSequence := 20;
-	END_IF
-END_CASE
-
-
-	
-	IF exerestart THEN
-		exerestart := FALSE;
-		InitialSequence := 0;
-		MainSequence[1] := 0;
-		MainSequence[2] := 0;
-	END_IF
-	
-	IF exereset THEN
-		exereset := FALSE;
-		FOR i:=1 TO 2 DO
-		XpMover[i].Reset(commandFeedback:= XpFeedback[i][4]);
-		END_FOR
-	END_IF
-
-]]></ST>
-      </Implementation>
-    </Action>
     <Action Name="MainProgram" Id="{c57da7f2-b0eb-4426-8036-28ffc2422c29}">
       <Implementation>
         <ST><![CDATA[CASE nMainState OF
@@ -478,9 +339,9 @@ END_CASE
 	
 	40:
 	IF iPriMover = 1 THEN
-		eTaskMover[2] := E_MoverTask.MOVE_END_T1;
+		eTaskMover[2] := E_MoverTask.MOVE_BEHIND_T1;
 	ELSE
-		eTaskMover[1] := E_MoverTask.MOVE_END_T1;
+		eTaskMover[1] := E_MoverTask.MOVE_BEHIND_T1;
 	END_IF
 	nMainState := 50;
 	
@@ -499,6 +360,7 @@ END_CASE
 	70:
 	IF bDoneMover[1] THEN
 		bTimerStart := TRUE;
+		eTaskMover[1] := E_MoverTask.IDLE;
 	END_IF
 	
 	IF TON1.Q AND bDoneMover[2] THEN
@@ -506,15 +368,23 @@ END_CASE
 		eTaskMover[2] := E_MoverTask.IDLE;
 		
 		eTaskMover[1] := E_MoverTask.MOVE_TO_T2;
-		nMainState := 80;
+		nMainState := 75;
 	END_IF
+	
+	75:
+	eTaskMover[1] := E_MoverTask.MOVE_TO_T2;
+	nMainState := 80;
 	
 	80:
 	IF bDoneMover[1] THEN
+		eTaskMover[1] := E_MoverTask.IDLE;
+		nMainState := 85;
+	END_IF
+	
+	85:
 		eTaskMover[1] := E_MoverTask.MOVE_END_T1;
 		eTaskMover[2] := E_MoverTask.MOVE_END_T1;
 		nMainState := 90;
-	END_IF
 	
 	90:
 	IF bDoneMover[1] AND bDoneMover[2] THEN
@@ -524,267 +394,6 @@ END_CASE
 	END_IF
 	
 END_CASE]]></ST>
-      </Implementation>
-    </Action>
-    <Action Name="MainProgram1" Id="{849a472c-a84b-41bc-98e8-0b44a8ccb233}">
-      <Implementation>
-        <ST><![CDATA[//Mover1 (rotation)
-
-CASE MainSequence[1] OF
-	0://Init
-	IF InitialSequence = 20 THEN
-		MainSequence[1]:=5;
-	END_IF 
-	
-	5: //Join check
-	nMoverCount := XpTrack[1].MCTOPLC_STD.MoverCountOnTrack;
-	IF nMoverCount=2 THEN
-		MainSequence[1]:=10;
-	ELSIF exelock THEN
-		RETURN;
-	END_IF
-	
-	10: // Go to Half of T2
-	IF xptrack[1].GetLength()-5<xpmover[1].MCTOPLC.SETONTRACK.SetPos THEN
-	DistanceTarget:=Xptrack[2].GetLength()/2;
-	XpMover[1].MoveOnTrack(
-		commandFeedback:= XpFeedback[1][2], 
-		targetTrack:= XpTrack[2], 
-		targetPositionOnTrack:= DistanceTarget, 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
-		MainSequence[1]:= 11;
-	END_IF
-	
-	11:	
-	IF XpFeedback[1][2].Active THEN
-	MainSequence[1] :=12;
-	END_IF
-	
-	12:
-	//IF xpmover[1].MCTOPLC.SETONTRACK.SetPos = distanceTarget THEN
-	IF XpFeedback[1][2].Done THEN
-		MainSequence[1]:=15; //NO rotation
-	END_IF
-	
-	(*
-	13: //rotation
-	RotationTarget := xpmover[1].MCTOPLC.SETONTRACK.SetPos +360;
-	XpMover[1].MoveC(commandFeedback:=XpFeedback[1][3] , 
-		targetPosition:= RotationTarget, 
-		constraint:= constraint_c[1], 
-		options:= stOption_c[1]);
-		MainSequence[1] :=14;
-		
-	14: //CheckRotation
-	IF XpFeedback[1][3].Done THEN
-		MainSequence[1]:=16;
-	END_IF
-	*)
-
-	15://Timer
-	TON1(IN:= TRUE, PT:= T#3S);
-	IF TON1.Q THEN
-		TON1(IN :=FALSE);
-		MainSequence[1] :=18;
-	END_IF
-	
-	(*
-	16: //rotation
-	XpMover[1].AdoptTrackOrientation(commandFeedback:= XpFeedback[1][5], 
-		constraint:= Constraint_c[1], 
-		options:= stOption_a[1]);
-		MainSequence[1] :=17;
-		
-	17: //CheckRotation
-	IF XpFeedback[1][5].Done THEN
-		MainSequence[1]:=18;
-	END_IF
-	*)
-	
-	18: //Go to End of T2
-	trackTarget[1] := 2;
-	XpMover[1].MoveOnTrack(
-		commandFeedback:= XpFeedback[1][6], 
-		targetTrack:= XpTrack[trackTarget[1]], 
-		targetPositionOnTrack:= Xptrack[trackTarget[1]].GetLength()-20, 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
-		MainSequence[1] :=19;
-		
-	19:
-	IF XpFeedback[1][6].Active THEN
-		MainSequence[1] :=20;
-	END_IF
-
-	20: //check T2 or T3
-	//	IF xptrack[2].GetLength()-20<xpmover[1].MCTOPLC.SETONTRACK.SetPos THEN
-		IF XpFeedback[1][6].Done THEN	
-		MainSequence[1] :=30;
-		ELSIF exestop THEN
-			MainSequence[1] :=50;
-		END_IF	
-	
-	
-	30: //GO to T1
-		tracktarget[1] := 1;
-		XpMover[1].MoveOnTrack(
-		commandFeedback:= XpFeedback[1][7], 
-		targetTrack:= XpTrack[trackTarget[1]], 
-		targetPositionOnTrack:= Xptrack[trackTarget[1]].GetLength(), 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
-		MainSequence[1] :=31;
-	31:	
-		IF XpFeedback[1][7].Active THEN
-			MainSequence[1] :=40;
-		END_IF
-	
-	40: //check T1
-	//	IF xptrack[1].GetLength()-20<xpmover[1].MCTOPLC.SETONTRACK.SetPos THEN
-		IF XpFeedback[1][7].Done THEN
-		MainSequence[1] :=10;
-		ELSIF exestop THEN
-			MainSequence[1] :=50;
-		END_IF
-	
-	50: //stop
-		IF exestop THEN
-			exeStop := FALSE;
-//			XpMover[i].Halt(
-//			commandFeedback:=XpFeedback[i][3] , 
-//			constraint:= Constraint);
-//			TargetPosition[i].SetValuesXYC(
-//			x:= Xpmover[i].MCTOPLC.ACT.ActPos.x, 
-//			y:= Xpmover[i].MCTOPLC.ACT.ActPos.y, 
-//			c:= Xpmover[i].MCTOPLC.ACT.ActPos.c);
-		END_IF
-			MainSequence[1] :=60;
-			
-	60: //stop check
-//		IF XpFeedback[1][3].Done THEN
-			MainSequence[1] :=70;
-//		END_IF
-
-	70: //LeaveTrack	
-		XpMover[1].LeaveTrack(commandFeedback:= XpFeedback[1][8],
-			targetPosition:= targetposition[1], 
-			constraint:= constraint[1], 
-			options:= stOption_l[1]);
-	IF XpFeedback[1][0].Done THEN
-		JoinState[1] := FALSE;
-	END_IF
-		
-	END_CASE
-	
-]]></ST>
-      </Implementation>
-    </Action>
-    <Action Name="MainProgram2" Id="{b3b0e112-d014-4be8-a8bc-22fe305df074}">
-      <Implementation>
-        <ST><![CDATA[//Mover2 (through)
-CASE MainSequence[2] OF
-	0://Init
-	IF InitialSequence = 20 THEN
-		MainSequence[2]:=5;
-	END_IF 
-
-	5://Join check
-	nMoverCount := XpTrack[1].MCTOPLC_STD.MoverCountOnTrack;
-	IF nMoverCount=2 THEN
-		MainSequence[2]:=10;
-	ELSIF exelock THEN
-		RETURN;
-	END_IF
-	
-	10: // Go to T2 or T3
-	IF  xptrack[1].GetLength()-20<xpmover[2].MCTOPLC.SETONTRACK.SetPos THEN
-		IF XpTrack[2].MCTOPLC_STD.MoverCountOnTrack>0 THEN
-			trackTarget[2] := 3;
-		ELSE
-			trackTarget[2] := 2;
-		END_IF
-		XpMover[2].MoveOnTrack(
-		commandFeedback:= XpFeedback[2][2], 
-		targetTrack:= XpTrack[trackTarget[2]], 
-		targetPositionOnTrack:= Xptrack[trackTarget[2]].GetLength(), 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-		MainSequence[2] := 11;
-	END_IF
-	
-	11:
-		IF XpFeedback[2][2].Active THEN
-			MainSequence[2] :=15;
-		END_IF	
-	
-	15:
-	IF XpFeedback[2][2].Done THEN
-		MainSequence[2] :=30;
-	END_IF
-
-	20: //check T2 or T3
-		FOR t:=2 TO 3 DO
-			IF xptrack[t].GetLength()-20<xpmover[2].MCTOPLC.SETONTRACK.SetPos THEN
-				MainSequence[2] :=30;
-			ELSIF exestop THEN
-				MainSequence[2] :=50;
-			END_IF	
-		END_FOR
-	
-	
-	30: //GO to T1
-		tracktarget[2] := 1;
-		XpMover[2].MoveOnTrack(
-		commandFeedback:= XpFeedback[2][3], 
-		targetTrack:= XpTrack[trackTarget[2]], 
-		targetPositionOnTrack:= Xptrack[trackTarget[2]].GetLength(), 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-		MainSequence[2] := 31;
-		
-	31:	
-		IF XpFeedback[2][3].Active THEN
-			MainSequence[2] :=40;
-		END_IF
-	
-	
-	40: //check T1
-	//	IF xptrack[2].GetLength()-20<xpmover[2].MCTOPLC.SETONTRACK.SetPos THEN
-		IF XpFeedback[2][3].Done THEN
-			MainSequence[2] :=10;
-		ELSIF exestop THEN
-			MainSequence[2] :=50;
-		END_IF
-	
-	50: //stop
-		IF exestop THEN
-			exeStop := FALSE;
-//			XpMover[i].Halt(
-//			commandFeedback:=XpFeedback[i][3] , 
-//			constraint:= Constraint);
-//			TargetPosition[i].SetValuesXYC(
-//			x:= Xpmover[i].MCTOPLC.ACT.ActPos.x, 
-//			y:= Xpmover[i].MCTOPLC.ACT.ActPos.y, 
-//			c:= Xpmover[i].MCTOPLC.ACT.ActPos.c);
-		END_IF
-			MainSequence[2] :=60;
-			
-	60: //stop check
-//		IF XpFeedback[i][3].Done THEN
-			MainSequence[2] :=70;
-//		END_IF
-
-	70: //LeaveTrack	
-		XpMover[2].LeaveTrack(commandFeedback:= XpFeedback[2][4],
-			targetPosition:= TargetPosition[2], 
-			constraint:= constraint[2], 
-			options:= stOption_l[2]);
-	IF XpFeedback[2][0].Done THEN
-		JoinState[2] := FALSE;
-	END_IF
-		
-	END_CASE]]></ST>
       </Implementation>
     </Action>
     <Action Name="ManualMove" Id="{c3baa2a6-57e4-4564-a85d-05e83398f935}">
@@ -829,6 +438,7 @@ END_FOR]]></ST>
 		E_MoverTask.MOVE_END_T1		: nMoverState[1] :=300;
 		E_MoverTask.MOVE_HALF_T2	: nMoverState[1] :=400;
 		E_MoverTask.MOVE_TO_T2 		: nMoverState[1] :=500;
+		E_MoverTask.MOVE_BEHIND_T1	: nMoverState[1] :=700;
 	END_CASE
 	
 	100://JOIN T1
@@ -839,7 +449,7 @@ END_FOR]]></ST>
 	nMoverState[1]:=101;
 	
 	101:
-	IF XpFeedback[1][0].Active THEN
+	IF XpFeedback[1][0].Active OR XpFeedback[1][0].Done THEN
 		nMoverState[1]:=102;
 	END_IF	
 	
@@ -858,7 +468,7 @@ END_FOR]]></ST>
 	nMoverState[1]:=201;
 	
 	201:
-	IF XpFeedback[1][1].Active THEN
+	IF XpFeedback[1][1].Active OR XpFeedback[1][1].Done THEN
 		nMoverState[1]:=202;
 	END_IF	
 	
@@ -879,7 +489,7 @@ END_FOR]]></ST>
 		nMoverState[1]:=301;
 		
 	301:
-	IF XpFeedback[1][2].Active THEN
+	IF XpFeedback[1][2].Active OR XpFeedback[1][2].Done THEN
 		nMoverState[1]:=302;
 	END_IF	
 	
@@ -900,7 +510,7 @@ END_FOR]]></ST>
 		nMoverState[1]:=401;
 		
 	401:
-	IF XpFeedback[1][3].Active THEN
+	IF XpFeedback[1][3].Active OR XpFeedback[1][3].Done THEN
 		nMoverState[1]:=402;
 	END_IF	
 	
@@ -921,12 +531,32 @@ END_FOR]]></ST>
 			nMoverState[1]:=501;
 		
 	501:
-	IF XpFeedback[1][4].Active THEN
+	IF XpFeedback[1][4].Active OR XpFeedback[1][4].Done THEN
 		nMoverState[1]:=502;
 	END_IF	
 	
 	502:
 	IF XpFeedback[1][4].Done THEN
+		bDoneMover[1] := TRUE;
+		nMoverState[1] := 0;
+	END_IF	
+	
+	700:
+		XpMover[1].MoveOnTrack(
+		commandFeedback:= XpFeedback[1][5], 
+		targetTrack:= XpTrack[trackTarget[1]], 
+		targetPositionOnTrack:= Xptrack[trackTarget[1]].GetLength()/2, 
+		constraint:= Constraint[1], 
+		options:= stOption[1]);
+			nMoverState[1]:=701;
+		
+	701:
+	IF XpFeedback[1][5].Active OR XpFeedback[1][5].Done THEN
+		nMoverState[1]:=702;
+	END_IF	
+	
+	702:
+	IF XpFeedback[1][5].Done THEN
 		bDoneMover[1] := TRUE;
 		nMoverState[1] := 0;
 	END_IF	
@@ -945,17 +575,18 @@ END_CASE]]></ST>
 		E_MoverTask.JOIN_T2 		: nMoverState[2] :=200;
 		E_MoverTask.MOVE_END_T1		: nMoverState[2] :=300;
 		E_MoverTask.MOVE_TO_T3 		: nMoverState[2] :=600;
+		E_MoverTask.MOVE_BEHIND_T1	: nMoverState[2] :=700;
 	END_CASE
 	
 	100://JOIN T1
 	XpMover[2].JoinTrack(commandFeedback:= XpFeedback[2][0], 
 				targetTrack:= XpTrack[1], 
-				constraint:= constraint[1], 
-				options:= stOption_j[1]);
+				constraint:= constraint[2], 
+				options:= stOption_j[2]);
 	nMoverState[2]:=101;
 	
 	101:
-	IF XpFeedback[2][0].Active THEN
+	IF XpFeedback[2][0].Active OR XpFeedback[2][0].Done THEN
 		nMoverState[2]:=102;
 	END_IF	
 	
@@ -969,12 +600,12 @@ END_CASE]]></ST>
 	200://JOIN T2
 	XpMover[2].JoinTrack(commandFeedback:= XpFeedback[2][1], 
 				targetTrack:= XpTrack[2], 
-				constraint:= constraint[1], 
-				options:= stOption_j[1]);
+				constraint:= constraint[2], 
+				options:= stOption_j[2]);
 	nMoverState[2]:=201;
 	
 	201:
-	IF XpFeedback[2][1].Active THEN
+	IF XpFeedback[2][1].Active OR XpFeedback[2][1].Done THEN
 		nMoverState[2]:=202;
 	END_IF	
 	
@@ -990,12 +621,12 @@ END_CASE]]></ST>
 		commandFeedback:= XpFeedback[2][2], 
 		targetTrack:= XpTrack[1], 
 		targetPositionOnTrack:= Xptrack[1].GetLength(), 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
+		constraint:= Constraint[2], 
+		options:= stOption[2]);
 		nMoverState[2]:=301;
 		
 	301:
-	IF XpFeedback[2][2].Active THEN
+	IF XpFeedback[2][2].Active OR XpFeedback[2][2].Done THEN
 		nMoverState[2]:=302;
 	END_IF	
 	
@@ -1011,17 +642,37 @@ END_CASE]]></ST>
 		commandFeedback:= XpFeedback[2][3], 
 		targetTrack:= XpTrack[3], 
 		targetPositionOnTrack:= XpTrack[3].GetLength(), 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
+		constraint:= Constraint[2], 
+		options:= stOption[2]);
 		nMoverState[2]:=601;
 		
 	601:
-	IF XpFeedback[2][3].Active THEN
+	IF XpFeedback[2][3].Active OR XpFeedback[2][3].Done THEN
 		nMoverState[2]:=602;
 	END_IF	
 	
 	602:
 	IF XpFeedback[2][3].Done THEN
+		bDoneMover[2] := TRUE;
+		nMoverState[2] := 0;
+	END_IF	
+	
+	700:
+		XpMover[2].MoveOnTrack(
+		commandFeedback:= XpFeedback[1][4], 
+		targetTrack:= XpTrack[trackTarget[1]], 
+		targetPositionOnTrack:= Xptrack[trackTarget[1]].GetLength()/2, 
+		constraint:= Constraint[2], 
+		options:= stOption[2]);
+			nMoverState[2]:=701;
+		
+	701:
+	IF XpFeedback[2][5].Active OR XpFeedback[2][5].Done THEN
+		nMoverState[2]:=702;
+	END_IF	
+	
+	702:
+	IF XpFeedback[2][5].Done THEN
 		bDoneMover[2] := TRUE;
 		nMoverState[2] := 0;
 	END_IF	
