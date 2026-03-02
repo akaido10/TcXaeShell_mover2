@@ -296,7 +296,34 @@ END_IF]]></ST>
     </Action>
     <Action Name="MainProgram" Id="{c57da7f2-b0eb-4426-8036-28ffc2422c29}">
       <Implementation>
-        <ST><![CDATA[CASE nMainState OF
+        <ST><![CDATA[IF exeRestart THEN
+	exeRestart := FALSE;
+	
+	nMainState := 0;
+	eTaskMover[1] :=E_MoverTask.IDLE;
+	eTaskMover[2] :=E_MoverTask.IDLE;
+	nMoverState[1] :=0;
+	nMoverState[2] :=0;
+	
+	bDoneMover[1] :=FALSE;
+	bDoneMover[2] :=FALSE;
+	bTimerStart :=FALSE;	
+END_IF
+
+IF exeReset THEN
+	exeReset :=FALSE;
+	
+	nMainState :=999;
+	eTaskMover[1] :=E_MoverTask.RESET_ERROR;
+	eTaskMover[2] :=E_MoverTask.RESET_ERROR;
+	bDoneMover[1] :=FALSE;
+	bDoneMover[2] :=FALSE;
+	nMoverState[1] :=0;
+	nMoverState[2] :=0;
+		
+END_IF
+
+CASE nMainState OF
 	0:
 	IF bmoverEnable[1] AND bMoverEnable[2] AND exeStart THEN
 		exeStart :=FALSE;
@@ -307,15 +334,15 @@ END_IF]]></ST>
 			eTaskMover[2] := E_MoverTask.JOIN_T2;
 		ELSE
 			iPriMover := 2;
-			eTaskMover[2] := E_MoverTask.JOIN_T2;
-			eTaskMover[1] := E_MoverTask.JOIN_T1;
+			eTaskMover[1] := E_MoverTask.JOIN_T2;
+			eTaskMover[2] := E_MoverTask.JOIN_T1;
 		END_IF
 		
 		nMainState := 10;
 	END_IF
 	
 	10:
-	IF bDoneMover[1] AND bDoneMover[2] THEN
+	IF bDoneMover[1] AND bDoneMover[2] AND NOT exeStop THEN
 		eTaskMover[1] := E_MoverTask.IDLE;
 		eTaskMover[2] := E_MoverTask.IDLE;
 		nMainState := 20;
@@ -331,7 +358,7 @@ END_IF]]></ST>
 	nMainState := 30;
 	
 	30:
-	IF bDoneMover[1] OR bDoneMover[2] THEN
+	IF bDoneMover[1] OR bDoneMover[2] AND NOT exeStop THEN
 		eTaskMover[1] := E_MoverTask.IDLE;
 		eTaskMover[2] := E_MoverTask.IDLE;
 		nMainState := 40;
@@ -346,7 +373,7 @@ END_IF]]></ST>
 	nMainState := 50;
 	
 	50:
-	IF bDoneMover[1] OR bDoneMover[2] THEN
+	IF bDoneMover[1] OR bDoneMover[2] AND NOT exeStop THEN
 		eTaskMover[1] := E_MoverTask.IDLE;
 		eTaskMover[2] := E_MoverTask.IDLE;
 		nMainState := 60;
@@ -358,12 +385,12 @@ END_IF]]></ST>
 	nMainState := 70;
 	
 	70:
-	IF bDoneMover[1] THEN
+	IF bDoneMover[1] AND NOT exeStop THEN
 		bTimerStart := TRUE;
 		eTaskMover[1] := E_MoverTask.IDLE;
 	END_IF
 	
-	IF TON1.Q AND bDoneMover[2] THEN
+	IF TON1.Q AND bDoneMover[2] AND NOT exeStop THEN
 		bTimerStart := FALSE;
 		eTaskMover[2] := E_MoverTask.IDLE;
 		
@@ -376,7 +403,7 @@ END_IF]]></ST>
 	nMainState := 80;
 	
 	80:
-	IF bDoneMover[1] THEN
+	IF bDoneMover[1] AND NOT exeStop THEN
 		eTaskMover[1] := E_MoverTask.IDLE;
 		nMainState := 85;
 	END_IF
@@ -387,12 +414,18 @@ END_IF]]></ST>
 		nMainState := 90;
 	
 	90:
-	IF bDoneMover[1] AND bDoneMover[2] THEN
+	IF bDoneMover[1] AND bDoneMover[2] AND NOT exeStop THEN
 		eTaskMover[1] := E_MoverTask.IDLE;
 		eTaskMover[2] := E_MoverTask.IDLE;
 		nMainState := 60;
 	END_IF
 	
+	999:
+	IF bDoneMover[1] AND bDoneMover[2] THEN
+		eTaskMover[1] :=E_MoverTask.IDLE;
+		eTaskMover[2] :=E_MoverTask.IDLE;
+		nMainState := 0;
+	END_IF
 END_CASE]]></ST>
       </Implementation>
     </Action>
@@ -430,7 +463,9 @@ END_FOR]]></ST>
       <Implementation>
         <ST><![CDATA[CASE nMoverState[1] OF
 	0://IDLE
+	IF eTaskMover[1] =E_MoverTask.IDLE THEN //IDLE状態で0に戻ったらbDoneMoverを0に戻す
 	bDOneMover[1] := FALSE;
+	END_IF
 	
 	CASE eTaskMover[1] OF
 		E_MoverTask.JOIN_T1 		: nMoverState[1] :=100;
@@ -439,6 +474,7 @@ END_FOR]]></ST>
 		E_MoverTask.MOVE_HALF_T2	: nMoverState[1] :=400;
 		E_MoverTask.MOVE_TO_T2 		: nMoverState[1] :=500;
 		E_MoverTask.MOVE_BEHIND_T1	: nMoverState[1] :=700;
+		E_Movertask.RESET_ERROR		: nMoverState[1] :=950;
 	END_CASE
 	
 	100://JOIN T1
@@ -449,7 +485,7 @@ END_FOR]]></ST>
 	nMoverState[1]:=101;
 	
 	101:
-	IF XpFeedback[1][0].Active OR XpFeedback[1][0].Done THEN
+	IF (XpFeedback[1][0].Active OR XpFeedback[1][0].Done) THEN
 		nMoverState[1]:=102;
 	END_IF	
 	
@@ -468,7 +504,7 @@ END_FOR]]></ST>
 	nMoverState[1]:=201;
 	
 	201:
-	IF XpFeedback[1][1].Active OR XpFeedback[1][1].Done THEN
+	IF (XpFeedback[1][1].Active OR XpFeedback[1][1].Done) THEN
 		nMoverState[1]:=202;
 	END_IF	
 	
@@ -489,7 +525,7 @@ END_FOR]]></ST>
 		nMoverState[1]:=301;
 		
 	301:
-	IF XpFeedback[1][2].Active OR XpFeedback[1][2].Done THEN
+	IF (XpFeedback[1][2].Active OR XpFeedback[1][2].Done) THEN
 		nMoverState[1]:=302;
 	END_IF	
 	
@@ -510,7 +546,7 @@ END_FOR]]></ST>
 		nMoverState[1]:=401;
 		
 	401:
-	IF XpFeedback[1][3].Active OR XpFeedback[1][3].Done THEN
+	IF (XpFeedback[1][3].Active OR XpFeedback[1][3].Done) THEN
 		nMoverState[1]:=402;
 	END_IF	
 	
@@ -531,7 +567,7 @@ END_FOR]]></ST>
 			nMoverState[1]:=501;
 		
 	501:
-	IF XpFeedback[1][4].Active OR XpFeedback[1][4].Done THEN
+	IF (XpFeedback[1][4].Active OR XpFeedback[1][4].Done) THEN
 		nMoverState[1]:=502;
 	END_IF	
 	
@@ -551,7 +587,7 @@ END_FOR]]></ST>
 			nMoverState[1]:=701;
 		
 	701:
-	IF XpFeedback[1][5].Active OR XpFeedback[1][5].Done THEN
+	IF (XpFeedback[1][5].Active OR XpFeedback[1][5].Done) THEN
 		nMoverState[1]:=702;
 	END_IF	
 	
@@ -560,6 +596,21 @@ END_FOR]]></ST>
 		bDoneMover[1] := TRUE;
 		nMoverState[1] := 0;
 	END_IF	
+	
+	950:
+	XpMover[1].Reset(commandFeedBack :=XpFeedback[1][30]);
+	nMoverState[1] :=951;
+	
+	951:
+	IF XpFeedback[1][30].Active OR XpFeedback[1][30].Done THEN
+		nMoverState[1] :=952;
+	END_IF
+	
+	952:
+	IF XpFeedback[1][30].Done THEN
+		bDoneMover[1] :=TRUE;
+		nMoverState[1] := 0;
+	END_IF
 		
 END_CASE]]></ST>
       </Implementation>
@@ -568,7 +619,9 @@ END_CASE]]></ST>
       <Implementation>
         <ST><![CDATA[CASE nMoverState[2] OF
 	0://IDLE
+	IF eTaskMover[2] =E_MoverTask.IDLE THEN
 	bDOneMover[2] := FALSE;
+	END_IF
 	
 	CASE eTaskMover[2] OF
 		E_MoverTask.JOIN_T1 		: nMoverState[2] :=100;
@@ -576,6 +629,7 @@ END_CASE]]></ST>
 		E_MoverTask.MOVE_END_T1		: nMoverState[2] :=300;
 		E_MoverTask.MOVE_TO_T3 		: nMoverState[2] :=600;
 		E_MoverTask.MOVE_BEHIND_T1	: nMoverState[2] :=700;
+		E_Movertask.RESET_ERROR		: nMoverState[2] :=950;
 	END_CASE
 	
 	100://JOIN T1
@@ -677,7 +731,22 @@ END_CASE]]></ST>
 		nMoverState[2] := 0;
 	END_IF	
 	
-		
+	950:
+	XpMover[2].Reset(commandFeedBack :=XpFeedback[2][30]);
+	nMoverState[2] :=951;
+	
+	951:
+	IF XpFeedback[2][30].Active OR XpFeedback[2][30].Done THEN
+		nMoverState[2] :=952;
+	END_IF
+	
+	952:
+	IF XpFeedback[2][30].Done THEN
+		bDoneMover[2] :=TRUE;
+		nMoverState[2] := 0;
+	END_IF
+	
+	
 END_CASE]]></ST>
       </Implementation>
     </Action>
