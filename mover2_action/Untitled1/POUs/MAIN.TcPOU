@@ -18,23 +18,28 @@ VAR
 	exeInit					: BOOL := TRUE;
 	exeXpEnableMover		: BOOL;
 	exeXpDisableMover		: BOOL;
+	exeXpEnableMover_Ind	: ARRAY [1..2] OF BOOL;
+	exeXpDisableMover_Ind	: ARRAY [1..2] OF BOOL;
 	exeXpEnableGroup		: BOOL := TRUE;
 	exeXpEnableEnv			: BOOL := TRUE;
 	exeXpEnableTrack		: BOOL := TRUE; 
 	exeStart				: BOOL;
+	exeStartPB				: BOOL;
 	exeStop					: BOOL;
 	exeLock					: BOOL;
 	exeMoveCycle			: BOOL;
 	exereset				: BOOL;
+	exeresetPB				: BOOL;
 	exerestart				: BOOL;
+	exerestartPB			: BOOL;
 	exeXpDisableMover1		: BOOL;
 	exeMoveRotate			: BOOL;
 	exeMoveXY				: BOOL;
 	exeMoveC				: BOOL;
+	exeinput				: ARRAY [1..4] OF BOOL;
 
 
-	//FB宣言してインスタンス作成
-	FbEnableMover			: ARRAY[1..2] OF FB_XpEnableMover;
+	fbEnableMover			: ARRAY[1..2] OF FB_XpEnableMover;
 	FbDisableMover 			: ARRAY[1..2] OF FB_XpDisableMover;
 	FbEnableGroup			: FB_XpEnableGroup;
 	FbEnableEnv				: FB_XpEnableEnvironment;
@@ -82,9 +87,9 @@ VAR
 	
 	nMoverCount				: UDINT;
 	
-	intvalue 				:ARRAY[1..10] OF INT;
+	intvalue 				: ARRAY[1..10] OF INT;
 	n						: INT;
-	nState					: INT :=0;
+	nState					: ARRAY [1..2] OF E_State;
 	bAllDoneE				: BOOL;
 	bAllDoneD				: BOOL;
 	bHasErrorE				: BOOL;
@@ -97,10 +102,10 @@ VAR
 	FirstCollisionError		: ARRAY [0..10] OF BOOL;
 	iPriMover				: INT;
 	
-	VisVar 					:ARRAY[1..2]OF ARRAY[0..2] OF LREAL;
+	VisVar 					: ARRAY[1..2]OF ARRAY[0..2] OF LREAL;
 	RotationTarget			: LREAL;
 	TON1					: TON;
-	bPause					:BOOL;
+	bPause					: BOOL;
 	tCount					: TIME;
 	
 	nMainState				: INT;
@@ -110,6 +115,7 @@ VAR
 	bTrack2Busy				: BOOL;
 
 	bInitScan				: BOOL := TRUE;
+	iSecMover: INT;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[update();
@@ -128,7 +134,7 @@ intvalue[2] := EipIntInput[0];]]></ST>
       <Implementation>
         <ST><![CDATA[FOR i:=1 TO 2 DO
 Constraint[i].SetValuesVADJ(
-		V:= 100, 
+		V:= 500, 
 		A:= 7000, 
 		D:= 7000,
 		J:=35000);
@@ -165,71 +171,66 @@ END_IF
 	exeXpEnableMover := FALSE;
 END_IF
 
-
-IF exeXpEnableMover AND nState=E_State.INIT THEN //運転準備ボタン押下かつステート0のとき
-	nState := E_State.EnableMover;
+IF exeXpEnableMover THEN
+	exeXpEnableMover_Ind[1] := TRUE;
+	exeXpEnableMover_Ind[2] := TRUE;
 	exeXpEnableMover := FALSE;
 END_IF
 
-IF exeXpDisableMover AND nState=E_State.EnableComp THEN//運転終了ボタン押下かつステート30のとき
-	nState := E_State.DisableMover;
+IF exeXpDisableMover THEN
+	exeXpDisableMover_Ind[1] := TRUE;
+	exeXpDisableMover_Ind[2] := TRUE;
 	exeXpDisableMover := FALSE;
 END_IF
 
-CASE nState OF
+FOR i:=1 TO 2 DO
+IF exeXpEnableMover_Ind[i] AND nState[i]=E_State.INIT THEN //運転準備ボタン押下かつステート0のとき
+	nState[i] := E_State.EnableMover;
+	exeXpEnableMover_Ind[i] := FALSE;
+END_IF
+
+IF exeXpDisableMover_Ind[i] AND nState[i]=E_State.EnableComp THEN//運転終了ボタン押下かつステート30のとき
+	nState[i] := E_State.DisableMover;
+	exeXpDisableMover_Ind[i] := FALSE;
+END_IF
+
+CASE nState[i] OF
 	E_State.init:
 	//wait
 	
 	E_State.EnableMover://moverを有効化（浮上）
-		XpMover[1].Enable(commandFeedback:= XpFeedback[1][10]);
-		XpMover[2].Enable(commandFeedback:= XpFeedback[2][10]);
-	nState :=E_State.EnableCheck;
+		XpMover[i].Enable(commandFeedback:= XpFeedback[i][10]);
+		nState[i] :=E_State.EnableCheck;
 	
 	E_State.EnableCheck://mover状態確認
-	bAllDoneE := TRUE;
-	bHasErrorE :=FALSE;
-	
-	IF XpFeedback[1][10].Error OR XpFeedback[2][10].Error THEN
-		bHasErrorE :=TRUE;//一つでもErrorがあれば出力
-	END_IF
-	IF NOT (XpFeedback[1][10].Done AND XpFeedback[2][10].Done) THEN
-		bAllDoneE :=FALSE;//一つでもDoneになっていなければFalseにする	
-	END_IF
-	
-	IF bHasErrorE THEN
-		nState :=E_State.ERROR;//エラー状態のためno.999	に遷移
-	ELSIF bAllDoneE THEN
-		nState :=E_State.Zmove;//すべてdoneのため次のステートに進む
+	IF XpFeedback[i][10].Error THEN
+		nState[i] :=E_State.ERROR;//エラー状態のためno.999	に遷移
+	ELSIF XpFeedback[i][10].Done THEN
+		nState[i] :=E_State.Zmove;//すべてdoneのため次のステートに進む
 	END_IF
 	
 	E_State.Zmove://moverを3mm浮かせる
-	XpMover[1].MoveZ(commandFeedback:= XpFeedback[1][11] , 
+	XpMover[i].MoveZ(commandFeedback:= XpFeedback[i][11] , 
 		targetPosition:=3.0 , 
-		constraint:=constraint[1]);
-	XpMover[2].MoveZ(commandFeedback:= XpFeedback[2][11] , 
-		targetPosition:=3.0 , 
-		constraint:=constraint[2]);
-	nState :=E_State.ZmoveCheck;	
+		constraint:=constraint[i]);
+	nState[i] :=E_State.ZmoveCheck;	
 	
 	E_State.ZmoveCheck:
-	IF XpFeedback[1][11].Done AND XpFeedback[2][11].Done THEN
-		nState := E_State.AddToGroup;
+	IF XpFeedback[i][11].Error THEN
+		nState[i] :=E_State.ERROR;
+	ELSIF XpFeedback[i][11].Done THEN
+		nState[i] := E_State.AddToGroup;
 	END_IF
 	
 	E_State.AddToGroup://moverとtrackをxpgroupに追加
-	xpmover[1].AddToGroup(commandfeedback := Xpfeedback[1][13],group:= XpGroup);
-	xpmover[2].AddToGroup(commandfeedback := Xpfeedback[2][13],group:= XpGroup);
-	
-	GVL.XpTrack[1].AddToGroup(commandFeedback:= XpFeedback[1][14], group:=XpGroup );
-	GVL.XpTrack[2].AddToGroup(commandFeedback:= XpFeedback[1][15], group:=XpGroup );
-	GVL.XpTrack[3].AddToGroup(commandFeedback:= XpFeedback[1][16], group:=XpGroup );
-	
-	nState := E_State.AddToGroupCheck;
+	xpmover[i].AddToGroup(commandfeedback := Xpfeedback[i][12],group:= XpGroup);
+	nState[i] := E_State.AddToGroupCheck;
 	
 	E_State.AddToGroupCheck:
-	IF XpFeedback[1][13].Done AND XpFeedback[2][13].Done AND XpFeedback[1][14].Done
-			 AND XpFeedback[1][15].Done AND XpFeedback[1][16].Done THEN
-		nState :=E_State.EnableComp;
+	IF XpFeedback[i][12].Error THEN
+		nState[i] :=E_State.ERROR;
+	ELSIF XpFeedback[i][12].Done THEN
+		nState[i] := E_State.EnableComp;
 	END_IF
 	
 	E_State.EnableComp://Enable完了表示
@@ -238,44 +239,52 @@ CASE nState OF
 	bMoverDisable :=FALSE;*)
 
 	E_State.DisableMover://moverを無効化（下ろす）
-	Xpmover[1].Disable(commandFeedback := XpFeedback[1][12]);
-	Xpmover[2].Disable(commandFeedback := XpFeedback[2][12]);
-	nState := E_State.DisableCheck;
+	Xpmover[i].Disable(commandFeedback := XpFeedback[i][13]);
+	nState[i] := E_State.DisableCheck;
 	
 	E_State.DisableCheck://mover状態確認
-	bAllDoneD := TRUE;
-	bHasErrorD :=FALSE;
-
-	IF XpFeedback[1][12].Error OR XpFeedback[2][12].Error THEN
-		bHasErrorD :=TRUE;
-	END_IF
-	IF NOT (XpFeedback[1][12].Done AND XpFeedback[2][12].Done) THEN
-		bAllDoneD :=FALSE;	
-	END_IF
-
-	
-	IF bHasErrorD THEN
-		nState :=E_State.ERROR;
-	ELSIF bAllDoneD THEN
-		nState :=E_State.DisableComp;
+	IF XpFeedback[i][13].Error THEN
+		nState[i] :=E_State.ERROR;
+	ELSIF XpFeedback[i][13].Done THEN
+		nState[i] := E_State.DisableComp;
 	END_IF
 	
 	E_State.DisableComp:	//Disable完了表示
 	(*bMoverEnable :=FALSE;
 	bMoverDisable :=TRUE;*)
-	nState := E_State.INIT;
+	nState[i] := E_State.INIT;
 	
 	E_State.ERROR:
 	IF exereset THEN;
 		exereset :=FALSE;
 		(*bMoverEnable :=FALSE;
 		bMoverDisable :=TRUE;*)
-		nState :=E_State.INIT;
+		nState[i] :=E_State.INIT;
 	END_IF
-	
 END_CASE
+END_FOR
 
+FOR i:=1 TO 4 DO
+	IF EipIntInput[i+1] =1 THEN
+		exeinput[i] := TRUE;
+	ELSE
+		exeinput[i] := FALSE;
+	END_IF
+END_FOR
 
+FOR i:=1 TO 2 DO
+IF EipIntInput[i+1]=1 THEN
+	exeXpEnableMover_Ind[i]:= TRUE;
+ELSE
+	exeXpEnableMover_Ind[i]:= FALSE;
+END_IF
+IF EipIntInput[i+3]=1 THEN
+	exeXpDisableMover_Ind[i]:= TRUE;
+ELSE
+	exeXpDisableMover_Ind[i]:= FALSE;
+END_IF
+
+END_FOR
 
 //環境情報を有効化
 IF exeXpEnableEnv THEN
@@ -300,6 +309,9 @@ IF exeXpEnableTrack THEN
 		xpGroup:= XpGroup,
 		execute:= exeXpEnableTrack);
 	END_FOR
+	GVL.XpTrack[1].AddToGroup(commandFeedback:= XpFeedback[1][14], group:=XpGroup );
+	GVL.XpTrack[2].AddToGroup(commandFeedback:= XpFeedback[1][15], group:=XpGroup );
+	GVL.XpTrack[3].AddToGroup(commandFeedback:= XpFeedback[1][16], group:=XpGroup );
 END_IF]]></ST>
       </Implementation>
     </Action>
@@ -320,15 +332,12 @@ END_IF
 
 IF exeReset THEN
 	exeReset :=FALSE;
-	
 	nMainState :=999;
 	eTaskMover[1] :=E_MoverTask.RESET_ERROR;
 	eTaskMover[2] :=E_MoverTask.RESET_ERROR;
 	bDoneMover[1] :=FALSE;
 	bDoneMover[2] :=FALSE;
-	fbMoverSeq[1].bResetMover :=1;
-	fbMoverSeq[2].bResetMover :=1;
-		
+
 END_IF
 
 TON1(IN :=bTimerStart, PT :=T#3S);
@@ -346,8 +355,46 @@ CASE nMainState OF
 	IF bmoverEnable[1] AND bMoverEnable[2] AND exeStart THEN
 		exeStart :=FALSE;
 		
-		IF XpMover[1].MCTOPLC.ACT.ActPos.x < XpMover[2].MCTOPLC.ACT.ActPos.x THEN
-			iPriMover := 1;
+		IF XpMover[1].MCTOPLC.ACT.ActPos.x > XpMover[2].MCTOPLC.ACT.ActPos.x THEN
+			iPriMover := 1; iSecMover :=2;
+		ELSE
+			iPriMover := 2; iSecMover :=1;
+		END_IF
+		nMainState := 5;
+ 	END_IF
+	
+	5:
+	eTaskMover[iPriMover] := E_MoverTask.JOIN_T2;
+	nMainState := 6;
+	
+	6:
+	(*IF nMoverState[iPriMover] <> 0 THEN*)
+		eTaskMover[iPriMover] := E_MoverTask.IDLE;
+		nMainState := 7;
+	(*END_IF*)
+	
+	7:
+	IF bDoneMover[iPriMover] THEN
+		nMainState := 8;
+	END_IF
+	
+	8:
+	eTaskMover[iSecMover] := E_MoverTask.JOIN_T3;
+	nMainState := 9;
+	
+	9:
+	(*IF nMoverState[iSecMover] <> 0 THEN*)
+		eTaskMover[iSecMover] := E_MoverTask.IDLE;
+		nMainState :=10;
+	(*END_IF*)
+	
+	10:
+	IF bDoneMover[iSecMover] THEN
+		nMainState := 20;
+	END_IF
+	
+		
+		(*
 			eTaskMover[1]:= E_MoverTask.JOIN_T3;
 			eTaskMover[2] := E_MoverTask.JOIN_T2;
 		ELSE
@@ -356,6 +403,13 @@ CASE nMainState OF
 			eTaskMover[2] := E_MoverTask.JOIN_T3;
 		END_IF
 		
+		nMainState := 5;
+	END_IF
+	
+	5:
+	IF nMoverState[1] <>0 AND nMoverState[2] <>0 THEN
+		eTaskMover[1] := E_MoverTask.IDLE;
+		eTaskMover[2] := E_MoverTask.IDLE;
 		nMainState := 10;
 	END_IF
 	
@@ -365,12 +419,13 @@ CASE nMainState OF
 		eTaskMover[2] := E_MoverTask.IDLE;
 		nMainState := 20;
 	END_IF
+	*)
 	
 	20://Track3に入ったmoverからTrack1へ移動する
 	IF iPriMover =1 THEN
-		eTaskMover[1] := E_MoverTask.MOVE_END_T1;
-	ELSE
 		eTaskMover[2] := E_MoverTask.MOVE_END_T1;
+	ELSE
+		eTaskMover[1] := E_MoverTask.MOVE_END_T1;
 	END_IF
 	
 	nMainState := 30;
@@ -384,9 +439,9 @@ CASE nMainState OF
 	
 	40://Track2のmoverをTrack1の途中まで移動させる
 	IF iPriMover = 1 THEN
-		eTaskMover[2] := E_MoverTask.MOVE_BEHIND_T1;
-	ELSE
 		eTaskMover[1] := E_MoverTask.MOVE_BEHIND_T1;
+	ELSE
+		eTaskMover[2] := E_MoverTask.MOVE_BEHIND_T1;
 	END_IF
 	nMainState := 50;
 	
@@ -519,317 +574,6 @@ END_IF
 END_FOR]]></ST>
       </Implementation>
     </Action>
-    <Action Name="MoverState1" Id="{2db1a029-24fa-4322-a24f-59d87d0729f8}">
-      <Implementation>
-        <ST><![CDATA[CASE nMoverState[1] OF
-	0://IDLE
-	IF eTaskMover[1] =E_MoverTask.IDLE THEN //IDLE状態で0に戻ったらbDoneMoverを0に戻す
-	bDOneMover[1] := FALSE;
-	END_IF
-	
-	CASE eTaskMover[1] OF
-		E_MoverTask.JOIN_T2 		: nMoverState[1] :=100;
-		E_MoverTask.JOIN_T3			: nMoverState[1] :=200;
-		E_MoverTask.MOVE_END_T1		: nMoverState[1] :=300;
-		E_MoverTask.MOVE_HALF_T2	: nMoverState[1] :=400;
-		E_MoverTask.MOVE_TO_T2 		: nMoverState[1] :=500;
-		E_MoverTask.MOVE_BEHIND_T1	: nMoverState[1] :=700;
-		E_Movertask.RESET_ERROR		: nMoverState[1] :=950;
-	END_CASE
-	
-	100://JOIN T2
-	XpMover[1].JoinTrack(commandFeedback:= XpFeedback[1][0], 
-				targetTrack:= XpTrack[2], 
-				constraint:= constraint[1], 
-				options:= stOption_j[1]);
-	nMoverState[1]:=101;
-	
-	101:
-	IF (XpFeedback[1][0].Active OR XpFeedback[1][0].Done) THEN
-		nMoverState[1]:=102;
-	END_IF	
-	
-	102:
-	IF XpFeedback[1][0].Done THEN
-		bDoneMover[1] := TRUE;
-		nMoverState[1] := 0;
-	END_IF
-
-
-	200://JOIN T3
-	XpMover[1].JoinTrack(commandFeedback:= XpFeedback[1][1], 
-				targetTrack:= XpTrack[3], 
-				constraint:= constraint[1], 
-				options:= stOption_j[1]);
-	nMoverState[1]:=201;
-	
-	201:
-	IF (XpFeedback[1][1].Active OR XpFeedback[1][1].Done) THEN
-		nMoverState[1]:=202;
-	END_IF	
-	
-	202:
-	IF XpFeedback[1][1].Done THEN
-		bDoneMover[1] := TRUE;
-		nMoverState[1] := 0;
-	END_IF
-	
-	
-	300://MOVE T1
-	XpMover[1].MoveOnTrack(
-		commandFeedback:= XpFeedback[1][2], 
-		targetTrack:= XpTrack[1], 
-		targetPositionOnTrack:= Xptrack[1].GetLength(), 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
-		nMoverState[1]:=301;
-		
-	301:
-	IF (XpFeedback[1][2].Active OR XpFeedback[1][2].Done) THEN
-		nMoverState[1]:=302;
-	END_IF	
-	
-	302:
-	IF XpFeedback[1][2].Done THEN
-		bDoneMover[1] := TRUE;
-		nMoverState[1] := 0;
-	END_IF
-	
-	
-	400://MOVE T2 HALF
-	XpMover[1].MoveOnTrack(
-		commandFeedback:= XpFeedback[1][3], 
-		targetTrack:= XpTrack[2], 
-		targetPositionOnTrack:= XpTrack[2].GetLength()/2, 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
-		nMoverState[1]:=401;
-		
-	401:
-	IF (XpFeedback[1][3].Active OR XpFeedback[1][3].Done) THEN
-		nMoverState[1]:=402;
-	END_IF	
-	
-	402:
-	IF XpFeedback[1][3].Done THEN
-		bDoneMover[1] := TRUE;
-		nMoverState[1] := 0;
-	END_IF	
-	
-	
-	500://MOVE T2 END
-	XpMover[1].MoveOnTrack(
-		commandFeedback:= XpFeedback[1][4], 
-		targetTrack:= XpTrack[2], 
-		targetPositionOnTrack:= Xptrack[2].GetLength(), 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
-			nMoverState[1]:=501;
-		
-	501:
-	IF (XpFeedback[1][4].Active OR XpFeedback[1][4].Done) THEN
-		nMoverState[1]:=502;
-	END_IF	
-	
-	502:
-	IF XpFeedback[1][4].Done THEN
-		bDoneMover[1] := TRUE;
-		nMoverState[1] := 0;
-	END_IF	
-	
-	700:
-		XpMover[1].MoveOnTrack(
-		commandFeedback:= XpFeedback[1][5], 
-		targetTrack:= XpTrack[1], 
-		targetPositionOnTrack:= Xptrack[1].GetLength()/3, 
-		constraint:= Constraint[1], 
-		options:= stOption[1]);
-			nMoverState[1]:=701;
-		
-	701:
-	IF (XpFeedback[1][5].Active OR XpFeedback[1][5].Done) THEN
-		nMoverState[1]:=702;
-	END_IF	
-	
-	702:
-	IF XpFeedback[1][5].Done THEN
-		bDoneMover[1] := TRUE;
-		nMoverState[1] := 0;
-	END_IF	
-	
-	950:
-	XpMover[1].Reset(commandFeedBack :=XpFeedback[1][30]);
-	nMoverState[1] :=951;
-	
-	951:
-	IF XpFeedback[1][30].Active OR XpFeedback[1][30].Done THEN
-		nMoverState[1] :=952;
-	END_IF
-	
-	952:
-	IF XpFeedback[1][30].Done THEN
-		bDoneMover[1] :=TRUE;
-		nMoverState[1] := 0;
-	END_IF
-		
-END_CASE]]></ST>
-      </Implementation>
-    </Action>
-    <Action Name="MoverState2" Id="{1fe77904-5f1b-42cb-824a-da7fc4adcf79}">
-      <Implementation>
-        <ST><![CDATA[CASE nMoverState[2] OF
-	0://IDLE
-	IF eTaskMover[2] =E_MoverTask.IDLE THEN
-	bDOneMover[2] := FALSE;
-	END_IF
-	
-	CASE eTaskMover[2] OF
-		E_MoverTask.JOIN_T2 		: nMoverState[2] :=100;
-		E_MoverTask.JOIN_T3 		: nMoverState[2] :=200;
-		E_MoverTask.MOVE_END_T1		: nMoverState[2] :=300;
-		E_MoverTask.MOVE_TO_T2		: nMoverState[2] :=500;
-		E_MoverTask.MOVE_TO_T3 		: nMoverState[2] :=600;
-		E_MoverTask.MOVE_BEHIND_T1	: nMoverState[2] :=700;
-		E_Movertask.RESET_ERROR		: nMoverState[2] :=950;
-	END_CASE
-	
-	100://JOIN T2
-	XpMover[2].JoinTrack(commandFeedback:= XpFeedback[2][0], 
-				targetTrack:= XpTrack[2], 
-				constraint:= constraint[2], 
-				options:= stOption_j[2]);
-	nMoverState[2]:=101;
-	
-	101:
-	IF XpFeedback[2][0].Active OR XpFeedback[2][0].Done THEN
-		nMoverState[2]:=102;
-	END_IF	
-	
-	102:
-	IF XpFeedback[2][0].Done THEN
-		bDoneMover[2] := TRUE;
-		nMoverState[2] := 0;
-	END_IF
-
-
-	200://JOIN T3
-	XpMover[2].JoinTrack(commandFeedback:= XpFeedback[2][1], 
-				targetTrack:= XpTrack[3], 
-				constraint:= constraint[2], 
-				options:= stOption_j[2]);
-	nMoverState[2]:=201;
-	
-	201:
-	IF XpFeedback[2][1].Active OR XpFeedback[2][1].Done THEN
-		nMoverState[2]:=202;
-	END_IF	
-	
-	202:
-	IF XpFeedback[2][1].Done THEN
-		bDoneMover[2] := TRUE;
-		nMoverState[2] := 0;
-	END_IF
-	
-	
-	300://MOVE T1
-	XpMover[2].MoveOnTrack(
-		commandFeedback:= XpFeedback[2][2], 
-		targetTrack:= XpTrack[1], 
-		targetPositionOnTrack:= Xptrack[1].GetLength(), 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-		nMoverState[2]:=301;
-		
-	301:
-	IF XpFeedback[2][2].Active OR XpFeedback[2][2].Done THEN
-		nMoverState[2]:=302;
-	END_IF	
-	
-	302:
-	IF XpFeedback[2][2].Done THEN
-		bDoneMover[2] := TRUE;
-		nMoverState[2] := 0;
-	END_IF
-	
-	500://MOVE T2
-	XpMover[2].MoveOnTrack(
-		commandFeedback:= XpFeedback[2][3], 
-		targetTrack:= XpTrack[2], 
-		targetPositionOnTrack:= XpTrack[2].GetLength(), 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-		nMoverState[2]:=601;
-		
-	501:
-	IF XpFeedback[2][3].Active OR XpFeedback[2][3].Done THEN
-		nMoverState[2]:=602;
-	END_IF	
-	
-	502:
-	IF XpFeedback[2][3].Done THEN
-		bDoneMover[2] := TRUE;
-		nMoverState[2] := 0;
-	END_IF	
-	
-	600://MOVE T3
-	XpMover[2].MoveOnTrack(
-		commandFeedback:= XpFeedback[2][4], 
-		targetTrack:= XpTrack[3], 
-		targetPositionOnTrack:= XpTrack[3].GetLength(), 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-		nMoverState[2]:=601;
-		
-	601:
-	IF XpFeedback[2][4].Active OR XpFeedback[2][4].Done THEN
-		nMoverState[2]:=602;
-	END_IF	
-	
-	602:
-	IF XpFeedback[2][4].Done THEN
-		bDoneMover[2] := TRUE;
-		nMoverState[2] := 0;
-	END_IF	
-	
-	700:
-		XpMover[2].MoveOnTrack(
-		commandFeedback:= XpFeedback[2][5], 
-		targetTrack:= XpTrack[1], 
-		targetPositionOnTrack:= Xptrack[1].GetLength()/3, 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-			nMoverState[2]:=701;
-		
-	701:
-	IF XpFeedback[2][5].Active OR XpFeedback[2][5].Done THEN
-		nMoverState[2]:=702;
-	END_IF	
-	
-	702:
-	IF XpFeedback[2][5].Done THEN
-		bDoneMover[2] := TRUE;
-		nMoverState[2] := 0;
-	END_IF	
-	
-	950:
-	XpMover[2].Reset(commandFeedBack :=XpFeedback[2][30]);
-	nMoverState[2] :=951;
-	
-	951:
-	IF XpFeedback[2][30].Active OR XpFeedback[2][30].Done THEN
-		nMoverState[2] :=952;
-	END_IF
-	
-	952:
-	IF XpFeedback[2][30].Done THEN
-		bDoneMover[2] :=TRUE;
-		nMoverState[2] := 0;
-	END_IF
-	
-	
-END_CASE]]></ST>
-      </Implementation>
-    </Action>
     <Action Name="Update" Id="{b564147a-f79d-4898-a402-a4436ddab2c5}">
       <Implementation>
         <ST><![CDATA[FOR i := 1 TO 2 DO
@@ -885,7 +629,44 @@ IF EipIntInput[1]=1 THEN
 	exeXpDisableMover := TRUE;
 ELSE
 	exeXpDisableMover := FALSE;
-END_IF]]></ST>
+END_IF
+
+IF EipIntInput[6]=1 OR exestartPB THEN
+	exeStart := TRUE;
+ELSE
+	exeStart := FALSE;
+END_IF
+
+IF EipIntInput[7]=1 THEN
+	exeStop := TRUE;
+ELSE
+	exeStop := FALSE;
+END_IF
+
+IF EipIntInput[8]=1 OR exeresetPB THEN
+	exereset := TRUE;
+ELSE
+	exereset := FALSE;
+END_IF
+
+IF EipIntInput[9]=1 OR exerestartPB THEN
+	exerestart := TRUE;
+ELSE
+	exerestart := FALSE;
+END_IF
+
+FOR i:=1 TO 2 DO
+	IF bMoverEnable[i]= TRUE THEN
+		EipIntOutput[i] :=1;
+	ELSE
+		EipIntOutput[i] :=0;
+	END_IF
+	IF bMoverDisable[i]= TRUE THEN
+		EipIntOutput[i+2] :=1;
+	ELSE
+		EipIntOutput[i+2] :=0;
+	END_IF
+END_FOR]]></ST>
       </Implementation>
     </Action>
   </POU>
