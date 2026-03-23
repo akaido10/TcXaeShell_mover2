@@ -4,18 +4,22 @@
     <Declaration><![CDATA[{attribute 'no_assign'}
 FUNCTION_BLOCK FB_XpMoverState
 VAR_INPUT
-	eTaskMover 	: E_Movertask;
-	refMover	: REFERENCE TO MC_PlanarMover;
-	bResetMover	: BOOL;
+	eTaskMover 			: E_Movertask;
+	refMover			: REFERENCE TO MC_PlanarMover;
+	bResetMover			: BOOL;
+	bRestartMover		: BOOL;
+	nMoverState			: INT;
 END_VAR
 VAR_OUTPUT
 	bDoneMover 		:BOOL;
+END_VAR
+VAR_IN_OUT
+	stParams : ST_MoverParams;
 END_VAR
 VAR
 	MSFeedback			: ARRAY [0..30] OF MC_PlanarFeedback;
 	
 //	bDoneMover			: BOOL;
-	nMoverState			: INT;
 	//eTaskMover			: E_MOVERTASK;
 	
 	stOption			: ST_MoveOnTrackOptions;
@@ -24,7 +28,9 @@ VAR
 	stoption_c			: ST_MoveCOptions;
 	stOption_j			: ST_JoinTrackOptions;
 	i: INT;
-	ValueC : LREAL := 300;
+	ValueC				: LREAL := 300;
+	stTargetPos			: LREAL;
+
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -34,10 +40,17 @@ IF NOT __ISVALIDREF(refMover) THEN
 END_IF
 *)
 
+IF bRestartMover THEN
+	bRestartMover := FALSE;
+	nMoverState := 0;
+	eTaskMover := E_MoverTask.IDLE;
+	RETURN;
+END_IF
+
 IF bResetMover THEN
 	bResetMover := FALSE;
-	nMoverState := 0;
-	RETURN;
+	nMoverState := 950;
+	eTaskMover := E_MoverTask.RESET_ERROR;
 END_IF
 
 CASE nMoverState OF
@@ -54,6 +67,7 @@ CASE nMoverState OF
 			E_MoverTask.MOVE_TO_T2 		: nMoverState :=500;
 			E_MoverTask.MOVE_TO_T3 		: nMoverState :=600;
 			E_MoverTask.MOVE_BEHIND_T1	: nMoverState :=700;
+			E_MoverTask.MOVE_C_ROTATE	: nMoverState :=800;
 			E_Movertask.RESET_ERROR		: nMoverState :=950;
 		END_CASE
 	
@@ -198,6 +212,27 @@ CASE nMoverState OF
 		nMoverState := 0;
 	END_IF	
 	
+	800:
+	//足し算
+	stTargetPos := refMover.MCTOPLC.SET.SetPos.c + 720;
+	//C回転
+	refMover.MoveC(commandFeedback:=MSFeedback[7] ,
+			targetPosition:=stTargetPos ,
+			constraint:=constraint_c ,
+			options:=stOption_c);
+	nMoverState :=801;
+	
+	801:
+	IF (MSFeedback[7].Active OR MSFeedback[7].Done) THEN
+		nMoverState:=802;
+	END_IF	
+	
+	802:
+	IF MSFeedback[7].Done THEN
+		bDoneMover := TRUE;
+		nMoverState := 0;
+	END_IF	
+	
 	950:
 	refMover.Reset(commandFeedBack :=MSFeedback[30]);
 	nMoverState :=951;
@@ -216,14 +251,14 @@ CASE nMoverState OF
 END_CASE
 
 Constraint.SetValuesVADJ(
-		V:= 100, 
+		V:= stParams.lrVelocity, 
 		A:= 7000, 
 		D:= 7000,
 		J:=35000);
 		
 Constraint_c.SetLimit(
 	Coordinate:= Coord_Mcs_C1, 
-	V:= ValueC, 
+	V:= stParams.lrVelocity_c, 
 	A:= 7000, 
 	D:= 7000, 
 	J:= 35000);

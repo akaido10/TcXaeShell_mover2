@@ -1,0 +1,120 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_XpMoverInit" Id="{80ce6c09-6e90-46fe-a9d5-cf7e2ed3d5ad}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_XpMoverInit
+VAR_INPUT
+	exeXpEnableMover_Ind 	: BOOL;
+	exeXpDisableMover_Ind 	: BOOL;
+	exereset : BOOL;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR_IN_OUT
+	refMover 	: MC_PlanarMover;
+	xpGroup		: MC_planargroup;
+END_VAR
+VAR
+	nState : E_State;
+	MSFeedback				: ARRAY [0..30] OF MC_PlanarFeedback;
+	constraint				: DynamicConstraint_PathXY;
+	i: INT;
+	ErrorID : LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF exeXpEnableMover_Ind AND nState=E_State.INIT THEN //運転準備ボタン押下かつステート0のとき
+	nState := E_State.EnableMover;
+	exeXpEnableMover_Ind := FALSE;
+END_IF
+
+IF exeXpDisableMover_Ind AND nState=E_State.EnableComp THEN//運転終了ボタン押下かつステート30のとき
+	nState := E_State.DisableMover;
+	exeXpDisableMover_Ind := FALSE;
+END_IF
+
+IF refMover.Error THEN
+	ErrorID := refMover.ErrorId;
+	nState:=E_State.ERROR;
+END_IF
+
+CASE nState OF
+	E_State.init:
+	//wait
+	
+	E_State.EnableMover://moverを有効化（浮上）
+		refMover.Enable(commandFeedback:= MSFeedback[10]);
+		nState :=E_State.EnableCheck;
+	
+	E_State.EnableCheck://mover状態確認
+	IF MSFeedback[10].Error THEN
+		nState :=E_State.ERROR;//エラー状態のためno.999	に遷移
+	ELSIF MSFeedback[10].Done THEN
+		nState :=E_State.Zmove;//すべてdoneのため次のステートに進む
+	END_IF
+	
+	E_State.Zmove://moverを3mm浮かせる
+	refMover.MoveZ(commandFeedback:= MSFeedback[11] , 
+		targetPosition:=3.0 , 
+		constraint:=constraint);
+	nState :=E_State.ZmoveCheck;	
+	
+	E_State.ZmoveCheck:
+	IF MSFeedback[11].Error THEN
+		nState :=E_State.ERROR;
+	ELSIF MSFeedback[11].Done THEN
+		nState := E_State.AddToGroup;
+	END_IF
+	
+	E_State.AddToGroup://moverとtrackをxpgroupに追加
+	refMover.AddToGroup(commandfeedback := MSFeedback[12],group:= XpGroup);
+	nState := E_State.AddToGroupCheck;
+	
+	E_State.AddToGroupCheck:
+	IF MSFeedback[12].Error THEN
+		nState :=E_State.ERROR;
+	ELSIF MSFeedback[12].Done THEN
+		nState := E_State.EnableComp;
+	END_IF
+	
+	E_State.EnableComp://Enable完了表示
+	//stay
+	(*bMoverEnable :=TRUE;
+	bMoverDisable :=FALSE;*)
+
+	E_State.DisableMover://moverを無効化（下ろす）
+	refMover.Disable(commandFeedback := MSFeedback[13]);
+	nState := E_State.DisableCheck;
+	
+	E_State.DisableCheck://mover状態確認
+	IF MSFeedback[13].Error THEN
+		nState :=E_State.ERROR;
+	ELSIF MSFeedback[13].Done THEN
+		nState := E_State.DisableComp;
+	END_IF
+	
+	E_State.DisableComp:	//Disable完了表示
+	(*bMoverEnable :=FALSE;
+	bMoverDisable :=TRUE;*)
+	nState := E_State.INIT;
+	
+	E_State.ERROR:
+	IF exereset THEN;
+		exereset :=FALSE;
+		(*bMoverEnable :=FALSE;
+		bMoverDisable :=TRUE;*)
+		nState :=E_State.INIT;
+	END_IF
+END_CASE
+
+FOR i := 0 TO 30 DO
+	MSFeedback[i].Update();
+END_FOR
+	
+	Constraint.SetValuesVADJ(
+		V:= 500, 
+		A:= 7000, 
+		D:= 7000,
+		J:=35000);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>
