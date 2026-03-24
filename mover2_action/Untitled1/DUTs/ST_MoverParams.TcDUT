@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_MoverParams" Id="{140ebeae-1a01-465a-b83d-adf54988880b}">
+    <Declaration><![CDATA[TYPE ST_MoverParams :
+STRUCT
+	lrVelocity		: LREAL ;
+	lrVelocity_c	: LREAL ;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -73,8 +73,8 @@ VAR
 	nManualX				: LREAL:=120;
 	nManualY				: LREAL:=120;
 	nManualC				: LREAL:=0;
-	ValueC 					: LREAL:=50;
-	valueV					: LREAL:=100;
+	ValueC 					: INT:=50;
+	valueV					: INT:=100;
 	
 	targetnum				: INT;
 	endnum					: INT;
@@ -124,6 +124,8 @@ VAR
 
 	exeStop_os: BOOL;
 	nMultiplier				: ARRAY [1..2] OF DINT;
+	nOldEipInput			: ARRAY [0..32] OF INT;
+	nVisionValue			:ARRAY [1..2] OF INT;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[update();
@@ -201,12 +203,12 @@ fbMoverInit[1](refMover := XpMover[1], xpGroup := xpGroup);
 fbMoverInit[2](refMover := XpMover[2], xpGroup := xpGroup);
 
 IF exeReset THEN
-	exeReset :=FALSE;
-	fbMoverInit[1].exereset := TRUE;
-	fbMoverInit[2].exereset := TRUE;
-ELSE
-	fbMoverInit[1].exereset := FALSE;
-	fbMoverInit[2].exereset := FALSE;
+//	exeReset :=FALSE;
+//	fbMoverInit[1].exereset := TRUE;
+//	fbMoverInit[2].exereset := TRUE;
+//ELSE
+//	fbMoverInit[1].exereset := FALSE;
+//	fbMoverInit[2].exereset := FALSE;
 END_IF
 
 FOR i:=1 TO 4 DO
@@ -282,8 +284,10 @@ IF exeReset THEN
 	//fbMoverSeq[2].eTaskMover :=E_MoverTask.RESET_ERROR;
 	bDoneMover[1] :=FALSE;
 	bDoneMover[2] :=FALSE;
-	fbMoverSeq[1].bResetMover :=1;
-	fbMoverSeq[2].bResetMover :=1;
+	fbMoverSeq[1].bResetMover :=TRUE;
+	fbMoverSeq[2].bResetMover :=TRUE;
+	fbMoverInit[1].exereset := TRUE;
+	fbMoverInit[2].exereset := TRUE;
 END_IF
 
 TON1(IN :=bTimerStart, PT :=T#3S);
@@ -419,39 +423,28 @@ CASE nMoverState[1] OF
 	nMoverState[1] := 170;
 	
 	170:
-	IF bDoneMover[1] AND NOT exeStop THEN
+	IF bDoneMover[1] THEN
 		eTaskMover[1] := E_MoverTask.IDLE;
 		nMoverState[1] :=172;
 	END_IF
 	
 	172:
-	eTaskMover[1] := E_MoverTask.MOVE_C_ROTATE;
-	nMoverState[1] := 173;
+	IF NOT exeStop THEN
+		eTaskMover[1] := E_MoverTask.MOVE_C_ROTATE;
+		nMoverState[1] := 173;
+	END_IF
 
 	173:
-	IF bDoneMover[1] AND NOT exeStop THEN
+	IF bDoneMover[1] THEN
 		eTaskMover[1] := E_MoverTask.IDLE;
 		nMoverState[1] :=175;
 	END_IF	
 	
-	(*
-	170://mover1は3s静止
-	IF bDoneMover[1] AND NOT exeStop THEN
-		bTimerStart := TRUE;
-		eTaskMover[1] := E_MoverTask.IDLE;
-	END_IF
-	
-	IF TON1.Q AND NOT exeStop THEN
-		bTimerStart := FALSE;
-		//eTaskMover[1] := E_MoverTask.IDLE;
-		//eTaskMover[1] := E_MoverTask.MOVE_TO_T2;
-		nMoverState[1] := 175;
-	END_IF
-	*)
-	
 	175://Mover1はtrack2の最後まで送る
-	eTaskMover[1] := E_MoverTask.MOVE_TO_T2;
-	nMoverState[1] := 180;
+	IF NOT exeStop THEN
+		eTaskMover[1] := E_MoverTask.MOVE_TO_T2;
+		nMoverState[1] := 180;
+	END_IF
 	
 	180:
 	IF bDoneMover[1] AND NOT exeStop THEN
@@ -599,21 +592,24 @@ ELSE
 END_IF
 
 IF EipIntInput[6]=1 OR exestartPB THEN
+	exestartPB :=FALSE;
 	exeStart := TRUE;
 ELSE
 	exeStart := FALSE;
 END_IF
 
-IF EipIntInput[7]=1 OR exeStop_os THEN
-	exeStop := TRUE;
-ELSE
-	exeStop := FALSE;
+IF (EipIntInput[7]=1 AND nOldEipInput[7]<>1) OR exeStop_os THEN
+	exeStop_os := FALSE;
+	exeStop := NOT exeStop;
+	EipIntOutput[8] := 1 - EipIntOutput[8];
 END_IF
+nOldEipInput[7] := EipIntInput[7];
 
 IF EipIntInput[8]=1 OR exeresetPB THEN
+	exeresetPB := FALSE;
 	exereset := TRUE;
-ELSE
-	exereset := FALSE;
+//ELSE
+//	exereset := FALSE;
 END_IF
 
 IF EipIntInput[9]=1 OR exerestartPB THEN
@@ -633,7 +629,19 @@ FOR i:=1 TO 2 DO
 	ELSE
 		EipIntOutput[i+2] :=0;
 	END_IF
-END_FOR]]></ST>
+END_FOR
+
+//速度変数を外部PLCから変更
+IF EipIntInput[10] <> nOldEipInput[10] THEN
+	ValueV := EipIntInput[10];
+	nOldEipInput[10] := EipIntInput[10];
+END_IF
+EipIntOutput[6] := ValueV;
+IF EipIntInput[11] <> nOldEipInput[11] THEN
+	ValueC := EipIntInput[11];
+	nOldEipInput[11] := EipIntInput[11];
+END_IF
+EipIntOutput[7] := ValueC;]]></ST>
       </Implementation>
     </Action>
   </POU>
