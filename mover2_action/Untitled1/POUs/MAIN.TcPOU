@@ -7,7 +7,7 @@ VAR
 	XpMover					: ARRAY [1..2] OF MC_PlanarMover;
 	XpGroup					: MC_PlanarGroup;
 	XpEnv					: MC_PlanarEnvironment;
-	XpTrack					: ARRAY [1..3] OF MC_PlanarTrack;
+//	XpTrack					: ARRAY [1..3] OF MC_PlanarTrack; 
 	XpFeedback				: ARRAY [1..2] OF ARRAY [0..30] OF MC_PlanarFeedback;
 	stMoverTrackOpt 		: ST_MoveOnTrackOptions;
 	ManualFeedback			: ARRAY [0..30] OF MC_PlanarFeedback;
@@ -38,6 +38,7 @@ VAR
 	exeMoveXY				: BOOL;
 	exeMoveC				: BOOL;
 	exeinput				: ARRAY [1..4] OF BOOL;
+	exeResetTrack			: BOOL;
 
 
 	fbEnableMover			: ARRAY[1..2] OF FB_XpEnableMover;
@@ -73,8 +74,8 @@ VAR
 	nManualX				: LREAL:=120;
 	nManualY				: LREAL:=120;
 	nManualC				: LREAL:=0;
-	ValueC 					: INT:=50;
-	valueV					: INT:=100;
+	ValueC 					: INT:=100;
+	valueV					: INT:=200;
 	
 	targetnum				: INT;
 	endnum					: INT;
@@ -268,6 +269,8 @@ END_IF]]></ST>
 	exeRestart := FALSE;
 	
 	nMainState := 0;
+	nMoverState[1] := 0;
+	nMoverState[2] := 0;
 	eTaskMover[1] :=E_MoverTask.IDLE;
 	eTaskMover[2] :=E_MoverTask.IDLE;
 	//fbMoverSeq[1].nMoverState :=0;
@@ -321,7 +324,7 @@ CASE nMainState OF
 	GVL.XpTrack[3].GetPositionAt(arcLength:=fTrackCenterLength[3], position:=stTargetPos[3]);
 	
 	XpMover[iPriMover].MoveToPosition(commandFeedback:=XpFeedback[iPriMover][5] ,
-				targetPosition:= stTargetPos[2],
+				targetPosition:= stTargetPos[2],//Track2
 				constraint:= Constraint[iPriMover],
 				options:= 0);
 	nMainState := 3;
@@ -333,7 +336,7 @@ CASE nMainState OF
 
 	4:			
 	XpMover[iSecMover].MoveToPosition(commandFeedback:=XpFeedback[iSecMover][5] ,
-				targetPosition:= stTargetPos[3],
+				targetPosition:= stTargetPos[3],//Track3
 				constraint:= Constraint[iSecMover],
 				options:= 0	);
 	nMainState :=5;
@@ -428,17 +431,26 @@ CASE nMoverState[1] OF
 		nMoverState[1] :=172;
 	END_IF
 	
-	172:
+	172://Timer
+	bTimerStart := TRUE;
+	IF TON1.Q AND NOT exeStop THEN
+		nMoverState[1] := 173;
+		bTimerStart := FALSE;
+	END_IF
+	
+	(*
+	172: //Rotation
 	IF NOT exeStop THEN
 		eTaskMover[1] := E_MoverTask.MOVE_C_ROTATE;
 		nMoverState[1] := 173;
 	END_IF
+	*)
 
 	173:
-	IF bDoneMover[1] THEN
+	//IF bDoneMover[1] THEN //Timer ver
 		eTaskMover[1] := E_MoverTask.IDLE;
 		nMoverState[1] :=175;
-	END_IF	
+	//END_IF	
 	
 	175://Mover1はtrack2の最後まで送る
 	IF NOT exeStop THEN
@@ -539,7 +551,7 @@ XpGroup.Update();
 XpEnv.Update();
 
 FOR i := 1 TO 3 DO
-	XpTrack[i].Update();
+	//XpTrack[i].Update();
 	GVL.XpTrack[i].Update();
 END_FOR
 
@@ -641,7 +653,14 @@ IF EipIntInput[11] <> nOldEipInput[11] THEN
 	ValueC := EipIntInput[11];
 	nOldEipInput[11] := EipIntInput[11];
 END_IF
-EipIntOutput[7] := ValueC;]]></ST>
+EipIntOutput[7] := ValueC;
+
+IF fbAutoScan.bDone THEN
+	EipIntOutput[9] := 1;
+ELSE
+	EipIntOutput[9] := 0;
+END_IF
+]]></ST>
       </Implementation>
     </Action>
   </POU>

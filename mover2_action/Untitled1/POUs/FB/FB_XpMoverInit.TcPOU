@@ -14,20 +14,23 @@ VAR_IN_OUT
 	xpGroup		: MC_planargroup;
 END_VAR
 VAR
-	nState : E_State;
+	nState : E_State :=0;
 	MSFeedback				: ARRAY [0..30] OF MC_PlanarFeedback;
 	constraint				: DynamicConstraint_PathXY;
 	i: INT;
 	ErrorID : LREAL;
+	fbTimer: TON;
+	stTargetPos	: PositionXYC ;
+
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[IF exeXpEnableMover_Ind AND nState=E_State.INIT THEN //運転準備ボタン押下かつステート0のとき
+      <ST><![CDATA[IF exeXpEnableMover_Ind AND refMover.MCTOPLC.STD.State = MC.MC_PLANAR_STATE.Disabled THEN //運転準備ボタン押下かつステート0のとき
 	nState := E_State.EnableMover;
 	exeXpEnableMover_Ind := FALSE;
 END_IF
 
-IF exeXpDisableMover_Ind AND nState=E_State.EnableComp THEN//運転終了ボタン押下かつステート30のとき
+IF exeXpDisableMover_Ind AND refMover.MCTOPLC.STD.State = MC.MC_PLANAR_STATE.Enabled THEN//運転終了ボタン押下かつステート30のとき
 	nState := E_State.DisableMover;
 	exeXpDisableMover_Ind := FALSE;
 END_IF
@@ -39,7 +42,17 @@ END_IF
 
 CASE nState OF
 	E_State.init:
-	//wait
+	refMover.Reset(commandFeedback:=MSFeedback[0]);
+	nState :=E_State.INIT2;
+	
+	E_State.INIT2:
+	IF MSFeedback[0].Done THEN
+		fbTimer(IN:= TRUE, PT:=T#200MS);
+		IF fbTimer.Q THEN
+			fbTimer(IN := FALSE);
+		END_IF	
+	END_IF
+	
 	
 	E_State.EnableMover://moverを有効化（浮上）
 		refMover.Enable(commandFeedback:= MSFeedback[10]);
@@ -49,12 +62,24 @@ CASE nState OF
 	IF MSFeedback[10].Error THEN
 		nState :=E_State.ERROR;//エラー状態のためno.999	に遷移
 	ELSIF MSFeedback[10].Done THEN
-		nState :=E_State.Zmove;//すべてdoneのため次のステートに進む
+		stTargetPos.x := refMover.MCTOPLC.ACT.ActPos.x;
+		stTargetPos.y := refMover.MCTOPLC.ACT.ActPos.y;
+		stTargetPos.c := refMover.MCTOPLC.ACT.ActPos.c;
+		refMover.MoveToPosition(commandFeedback:=MSFeedback[1],
+					targetPosition:=stTargetPos,
+					constraint :=constraint,
+					options := 0);
+		nState :=E_State.PositionCheck;//すべてdoneのため次のステートに進む
 	END_IF
 	
-	E_State.Zmove://moverを3mm浮かせる
+	E_State.PositionCheck:
+	IF MSFeedback[1].Done THEN
+		nState := e_state.AddToGroup;
+	END_IF
+	(*
+	E_State.Zmove://moverを2.2mm浮かせる
 	refMover.MoveZ(commandFeedback:= MSFeedback[11] , 
-		targetPosition:=3.0 , 
+		targetPosition:=2.2 , 
 		constraint:=constraint);
 	nState :=E_State.ZmoveCheck;	
 	
@@ -64,8 +89,15 @@ CASE nState OF
 	ELSIF MSFeedback[11].Done THEN
 		nState := E_State.AddToGroup;
 	END_IF
+	*)
 	
 	E_State.AddToGroup://moverとtrackをxpgroupに追加
+	IF refMover.MCTOPLC.STD.GroupOID <> 0 THEN
+		nState := e_state.AddToGroupCheck;
+	ELSE
+		refMover.AddToGroup(commandfeedback := MSFeedback[12],group:= XpGroup);
+		nState := E_State.AddToGroupCheck;
+	END_IF
 	refMover.AddToGroup(commandfeedback := MSFeedback[12],group:= XpGroup);
 	nState := E_State.AddToGroupCheck;
 	

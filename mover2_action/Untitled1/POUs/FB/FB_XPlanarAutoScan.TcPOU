@@ -47,7 +47,8 @@ CASE nState OF
         END_IF
 
     30: 
-        IF ipXpu.SetCoordMoverCommunicationCmd(CoordinatedMoverCommCommand.IdentifyAndAssignPossible) THEN
+        IF ipXpu.SetCoordMoverCommunicationCmd(	
+			CoordinatedMoverCommCommand.IdentifyAndAssignPossible) THEN
             bBusy  := FALSE;
             bDone  := TRUE;
             nState := 0;
