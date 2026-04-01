@@ -115,15 +115,22 @@ CASE nMoverState OF
 	refMover.MoveOnTrack(
 		commandFeedback:= MSFeedback[2], 
 		targetTrack:= GVL.XpTrack[1], 
-		targetPositionOnTrack:= GVL.Xptrack[1].GetLength(), 
+		targetPositionOnTrack:= GVL.XpTrack[1].GetLength(),
 		constraint:= Constraint[1], 
 		options:= stOption[1]);
 		nMoverState:=301;
-		
+	
+	(*
 	301:
-	IF MSFeedback[2].Active AND (refMover.MCTOPLC.SETONTRACK.SetPos > (GVL.XpTrack[1].GetLength() - 5.0)) THEN
+	IF (refMover.MCTOPLC.SETONTRACK.SetPos > (GVL.XpTrack[1].GetLength() - 15.0))
+		AND NOT MSFeedback[2].Error THEN
 		bDoneMover := TRUE;
 	END_IF
+	
+	IF MSFeedback[2].Error THEN
+		nMoverState := 0;
+	END_IF
+	
 	IF MSFeedback[2].Done THEN
 		nMoverState:=302;
 	END_IF	
@@ -131,6 +138,17 @@ CASE nMoverState OF
 	302:
 		bDoneMover := TRUE;
 		nMoverState := 0;
+	*)
+	301:
+	IF (MSFeedback[2].Active OR MSFeedback[2].Done) THEN
+		nMoverState:=302;
+	END_IF	
+	
+	302:
+	IF MSFeedback[2].Done THEN
+		bDoneMover := TRUE;
+		nMoverState := 0;
+	END_IF
 	
 	
 	400://MOVE T2 HALF
@@ -162,9 +180,10 @@ CASE nMoverState OF
 		constraint:= Constraint[2], 
 		options:= stOption[2]);
 			nMoverState:=501;
-		
+	
+(*	
 	501:
-	IF MSFeedback[4].Active AND (refMover.MCTOPLC.SETONTRACK.SetPos > (GVL.XpTrack[2].GetLength() - 5.0)) THEN
+	IF (refMover.MCTOPLC.SETONTRACK.SetPos > (GVL.XpTrack[2].GetLength() - 15.0)) THEN
 		bDoneMover := TRUE;
 	END_IF
 	IF MSFeedback[4].Done THEN
@@ -174,7 +193,18 @@ CASE nMoverState OF
 	502:
 		bDoneMover := TRUE;
 		nMoverState := 0;
-		
+*)
+	501:
+	IF (MSFeedback[4].Active OR MSFeedback[4].Done) THEN
+		nMoverState:=502;
+	END_IF	
+	
+	502:
+	IF MSFeedback[4].Done THEN
+		bDoneMover := TRUE;
+		nMoverState := 0;
+	END_IF
+	
 	
 	600://MOVE T3
 	refMover.MoveOnTrack(
@@ -184,9 +214,10 @@ CASE nMoverState OF
 		constraint:= Constraint[2], 
 		options:= stOption[2]);
 		nMoverState:=601;
-		
+	
+(*	
 	601:
-	IF MSFeedback[5].Active AND (refMover.MCTOPLC.SETONTRACK.SetPos > (GVL.XpTrack[3].GetLength() - 5.0)) THEN
+	IF (refMover.MCTOPLC.SETONTRACK.SetPos > (GVL.XpTrack[3].GetLength() - 15.0)) THEN
 		bDoneMover := TRUE;
 	END_IF
 	IF MSFeedback[5].Done THEN
@@ -196,6 +227,18 @@ CASE nMoverState OF
 	602:
 		bDoneMover := TRUE;
 		nMoverState := 0;
+*)
+	601:
+	IF (MSFeedback[5].Active OR MSFeedback[5].Done) THEN
+		nMoverState:=602;
+	END_IF	
+	
+	602:
+	IF MSFeedback[5].Done THEN
+		bDoneMover := TRUE;
+		nMoverState := 0;
+	END_IF
+	
 	
 	700://MOVE BIHIND T1
 		refMover.MoveOnTrack(
@@ -257,7 +300,7 @@ CASE nMoverState OF
 END_CASE
 
 stOption[1].gap := 170.0;
-stOption[2].gap := 118.0;
+stOption[2].gap := 170.0 (*118.0*);
 
 constraint[1].SetValuesVADJ(
 			V:= 150,

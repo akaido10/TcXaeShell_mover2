@@ -127,6 +127,8 @@ VAR
 	nMultiplier				: ARRAY [1..2] OF DINT;
 	nOldEipInput			: ARRAY [0..32] OF INT;
 	nVisionValue			:ARRAY [1..2] OF INT;
+	TON2: Ton;
+	tPause: BOOL;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[update();
@@ -416,57 +418,82 @@ END_CASE
 CASE nMoverState[1] OF
 	0:
 	IF nMainState = 70 THEN
-		nMoverState[1] :=160;
+(*		TON2(IN:=tPause , PT:=T#5S);
+		tPause:=TRUE;
+		IF TON2.Q THEN
+			TON2(IN:=FALSE);
+			tPause:=FALSE;
+*)
+			nMoverState[1] :=160;
+//		END_IF
 	END_IF
 	
 	160://【ループ開始】　mover1はT2,mover2はT3へ移動させる
-	eTaskMover[1] := E_MoverTask.MOVE_HALF_T2;
+	bDoneMover[1] := FALSE;
 	bTrack2Busy := TRUE;
-
+	bTimerStart := FALSE;
+	TON1(IN := FALSE);
+	eTaskMover[1] := E_MoverTask.MOVE_HALF_T2;
 	nMoverState[1] := 170;
 	
 	170:
 	IF bDoneMover[1] THEN
+		bDoneMover[1] := FALSE;
 		eTaskMover[1] := E_MoverTask.IDLE;
 		nMoverState[1] :=172;
 	END_IF
 	
-	172://Timer
-	bTimerStart := TRUE;
-	IF TON1.Q AND NOT exeStop THEN
-		nMoverState[1] := 173;
-		bTimerStart := FALSE;
+	(*
+	170:
+	IF bDoneMover[1] THEN
+		bDoneMover[1] := FALSE;
+		eTaskMover[1] := E_MoverTask.IDLE;
+		bTimerStart := TRUE;
+		nMoverState[1]:= 172;
 	END_IF
 	
-	(*
+	
+	172://Timer
+	IF TON1.Q AND NOT exeStop THEN
+		bTimerStart := FALSE;
+		eTaskMover[1] := E_MoverTask.MOVE_TO_T2;
+		bDoneMover[1] := FALSE;
+		nMoverState[1] := 180;
+
+	END_IF
+	*)
+	
 	172: //Rotation
 	IF NOT exeStop THEN
 		eTaskMover[1] := E_MoverTask.MOVE_C_ROTATE;
 		nMoverState[1] := 173;
 	END_IF
-	*)
+	
 
 	173:
-	//IF bDoneMover[1] THEN //Timer ver
+	IF bDoneMover[1] THEN 
 		eTaskMover[1] := E_MoverTask.IDLE;
 		nMoverState[1] :=175;
-	//END_IF	
+	
+END_IF	
 	
 	175://Mover1はtrack2の最後まで送る
 	IF NOT exeStop THEN
 		eTaskMover[1] := E_MoverTask.MOVE_TO_T2;
+		bDoneMover[1] := FALSE;
 		nMoverState[1] := 180;
 	END_IF
 	
 	180:
 	IF bDoneMover[1] AND NOT exeStop THEN
-		eTaskMover[1] := E_MoverTask.IDLE;
+		//eTaskMover[1] := E_MoverTask.IDLE;
 		bTrack2Busy := FALSE;
 		nMoverState[1] := 185;
 	END_IF
 	
 	185://Track1へ送る
 		eTaskMover[1] := E_MoverTask.MOVE_END_T1;
+		bDoneMover[1] := FALSE;
 		nMoverState[1] := 190;
 	
 	190://確認後IDLEにする
@@ -504,7 +531,8 @@ CASE nMoverState[2] OF
 	190://確認後IDLEにする
 	IF bDoneMover[2] AND NOT exeStop THEN
 		eTaskMover[2] := E_MoverTask.IDLE;
-		nMoverState[2] := 160;
+		bDoneMover[2] := FALSE;
+		nMoverState[2] := 0;
 	END_IF
 	
 
