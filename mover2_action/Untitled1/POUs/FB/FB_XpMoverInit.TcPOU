@@ -57,6 +57,7 @@ CASE nState OF
 	E_State.EnableMover://moverを有効化（浮上）
 		refMover.Enable(commandFeedback:= MSFeedback[10]);
 		nState :=E_State.EnableCheck;
+		//nState :=E_State.AddToGroup;
 	
 	E_State.EnableCheck://mover状態確認
 	IF MSFeedback[10].Error THEN
@@ -76,20 +77,6 @@ CASE nState OF
 	IF MSFeedback[1].Done THEN
 		nState := e_state.AddToGroup;
 	END_IF
-	(*
-	E_State.Zmove://moverを2.2mm浮かせる
-	refMover.MoveZ(commandFeedback:= MSFeedback[11] , 
-		targetPosition:=2.2 , 
-		constraint:=constraint);
-	nState :=E_State.ZmoveCheck;	
-	
-	E_State.ZmoveCheck:
-	IF MSFeedback[11].Error THEN
-		nState :=E_State.ERROR;
-	ELSIF MSFeedback[11].Done THEN
-		nState := E_State.AddToGroup;
-	END_IF
-	*)
 	
 	E_State.AddToGroup://moverとtrackをxpgroupに追加
 	IF refMover.MCTOPLC.STD.GroupOID <> 0 THEN
@@ -110,8 +97,6 @@ CASE nState OF
 	
 	E_State.EnableComp://Enable完了表示
 	//stay
-	(*bMoverEnable :=TRUE;
-	bMoverDisable :=FALSE;*)
 
 	E_State.DisableMover://moverを無効化（下ろす）
 	refMover.Disable(commandFeedback := MSFeedback[13]);
@@ -125,15 +110,11 @@ CASE nState OF
 	END_IF
 	
 	E_State.DisableComp:	//Disable完了表示
-	(*bMoverEnable :=FALSE;
-	bMoverDisable :=TRUE;*)
 	nState := E_State.INIT;
 	
 	E_State.ERROR:
 	IF exereset THEN;
 		exereset :=FALSE;
-		(*bMoverEnable :=FALSE;
-		bMoverDisable :=TRUE;*)
 		nState :=E_State.INIT;
 	END_IF
 END_CASE

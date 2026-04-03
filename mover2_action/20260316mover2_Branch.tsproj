@@ -20959,7 +20959,7 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.1.start.y</Name>
-								<Value>390</Value>
+								<Value>400</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.1.start.c</Name>
@@ -20971,7 +20971,7 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.1.end.y</Name>
-								<Value>390</Value>
+								<Value>400</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.1.end.c</Name>
@@ -20983,7 +20983,7 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.2.start.x</Name>
-								<Value>90</Value>
+								<Value>80</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.2.start.y</Name>
@@ -20995,7 +20995,7 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.2.end.x</Name>
-								<Value>90</Value>
+								<Value>80</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.2.end.y</Name>
@@ -21015,7 +21015,7 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.3.start.y</Name>
-								<Value>90</Value>
+								<Value>80</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.3.start.c</Name>
@@ -21027,7 +21027,7 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.3.end.y</Name>
-								<Value>90</Value>
+								<Value>80</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.3.end.c</Name>
@@ -21392,11 +21392,11 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.1.start.x</Name>
-								<Value>540</Value>
+								<Value>380</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.1.start.y</Name>
-								<Value>90</Value>
+								<Value>80</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.1.start.c</Name>
@@ -21404,11 +21404,11 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.1.end.x</Name>
-								<Value>590</Value>
+								<Value>580</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.1.end.y</Name>
-								<Value>90</Value>
+								<Value>80</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.1.end.c</Name>
@@ -21448,11 +21448,11 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.3.start.x</Name>
-								<Value>590</Value>
+								<Value>580</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.3.start.y</Name>
-								<Value>390</Value>
+								<Value>400</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.3.start.c</Name>
@@ -21460,11 +21460,11 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.3.end.x</Name>
-								<Value>540</Value>
+								<Value>380</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.3.end.y</Name>
-								<Value>390</Value>
+								<Value>400</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.3.end.c</Name>
@@ -21859,11 +21859,11 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.1.start.x</Name>
-								<Value>390</Value>
+								<Value>360</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.1.start.y</Name>
-								<Value>200</Value>
+								<Value>100</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.1.start.c</Name>
@@ -21871,11 +21871,11 @@
 							</Value>
 							<Value>
 								<Name>Geometric information.1.end.x</Name>
-								<Value>390</Value>
+								<Value>360</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.1.end.y</Name>
-								<Value>280</Value>
+								<Value>380</Value>
 							</Value>
 							<Value>
 								<Name>Geometric information.1.end.c</Name>
@@ -21924,7 +21924,7 @@
 		</Motion>
 		<Plc>
 			<Project GUID="{88015806-254D-4BC2-A4FF-8BEED45F03A7}" Name="Untitled1" PrjFilePath="Untitled1\Untitled1.plcproj" TmcFilePath="Untitled1\Untitled1.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" AutoReloadTmc="true" TmcHash="{4D267476-F61E-8CFA-A705-35497C5B134A}" TmcPath="Untitled1\Untitled1.tmc">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" AutoReloadTmc="true" TmcHash="{4BACB25C-0244-9280-3D23-9A2A021C3F47}" TmcPath="Untitled1\Untitled1.tmc">
 					<Name>Untitled1 Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Vars VarGrpType="2" AreaNo="1">
@@ -21967,24 +21967,24 @@
 							<Type GUID="{79107B5F-AFEC-4E5A-AF95-460E7D782CE1}" Namespace="MC">CDT_MCTOPLC_PLANAR_ENVIRONMENT</Type>
 						</Var>
 						<Var>
+							<Name>MAIN.XpTrack[1].MCTOPLC_STD</Name>
+							<Comment><![CDATA[ Track data that is transferred from the Planar Track to this function block. ]]></Comment>
+							<Type GUID="{5769ADF0-D6E6-40D9-B474-790A2A7F1D1F}" Namespace="MC">CDT_MCTOPLC_PLANAR_TRACK</Type>
+						</Var>
+						<Var>
+							<Name>MAIN.XpTrack[2].MCTOPLC_STD</Name>
+							<Comment><![CDATA[ Track data that is transferred from the Planar Track to this function block. ]]></Comment>
+							<Type GUID="{5769ADF0-D6E6-40D9-B474-790A2A7F1D1F}" Namespace="MC">CDT_MCTOPLC_PLANAR_TRACK</Type>
+						</Var>
+						<Var>
+							<Name>MAIN.XpTrack[3].MCTOPLC_STD</Name>
+							<Comment><![CDATA[ Track data that is transferred from the Planar Track to this function block. ]]></Comment>
+							<Type GUID="{5769ADF0-D6E6-40D9-B474-790A2A7F1D1F}" Namespace="MC">CDT_MCTOPLC_PLANAR_TRACK</Type>
+						</Var>
+						<Var>
 							<Name>MAIN.EipIntInput</Name>
 							<Comment><![CDATA[外部PLCとのIO]]></Comment>
 							<Type GUID="{2F829C09-A19B-5618-7A6E-70C9BF80E67F}">ARRAY [0..32] OF INT</Type>
-						</Var>
-						<Var>
-							<Name>GVL.XpTrack[1].MCTOPLC_STD</Name>
-							<Comment><![CDATA[ Track data that is transferred from the Planar Track to this function block. ]]></Comment>
-							<Type GUID="{5769ADF0-D6E6-40D9-B474-790A2A7F1D1F}" Namespace="MC">CDT_MCTOPLC_PLANAR_TRACK</Type>
-						</Var>
-						<Var>
-							<Name>GVL.XpTrack[2].MCTOPLC_STD</Name>
-							<Comment><![CDATA[ Track data that is transferred from the Planar Track to this function block. ]]></Comment>
-							<Type GUID="{5769ADF0-D6E6-40D9-B474-790A2A7F1D1F}" Namespace="MC">CDT_MCTOPLC_PLANAR_TRACK</Type>
-						</Var>
-						<Var>
-							<Name>GVL.XpTrack[3].MCTOPLC_STD</Name>
-							<Comment><![CDATA[ Track data that is transferred from the Planar Track to this function block. ]]></Comment>
-							<Type GUID="{5769ADF0-D6E6-40D9-B474-790A2A7F1D1F}" Namespace="MC">CDT_MCTOPLC_PLANAR_TRACK</Type>
 						</Var>
 					</Vars>
 					<UnrestoredVarLinks ImportTime="2026-01-16T13:29:41">
@@ -22010,6 +22010,19 @@
 							</OwnerB>
 							<OwnerB Name="TINC^XPlanar MC Project^Axes^Mover4220_2">
 								<Link VarA="MAIN.Xpmover[2].PLCTOMC^STD" TypeA="REFERENCE TO MC.CDT_PLCTOMC_PLANAR_MOVER_STD" InOutA="1" ParentTypeA="CDT_PLCTOMC_PLANAR_MOVER" GuidA="{A89933D4-0A1D-2E6A-D6B7-B95A787E8B11}" VarB="PlcToMc^STD" Size="8" RestoreInfo="ANotFound"/>
+							</OwnerB>
+						</OwnerA>
+					</UnrestoredVarLinks>
+					<UnrestoredVarLinks ImportTime="2026-04-03T12:19:20">
+						<OwnerA Name="InputDst" Prefix="TIPC^Untitled1^Untitled1 Instance" Type="1">
+							<OwnerB Name="TINC^XPlanar MC Project^Groups^Track1">
+								<Link VarA="GVL.XpTrack[1].MCTOPLC_STD" TypeA="MC.CDT_MCTOPLC_PLANAR_TRACK" InOutA="0" GuidA="{5769ADF0-D6E6-40D9-B474-790A2A7F1D1F}" VarB="McToPlc^STD" RestoreInfo="ANotFound"/>
+							</OwnerB>
+							<OwnerB Name="TINC^XPlanar MC Project^Groups^Track2">
+								<Link VarA="GVL.XpTrack[2].MCTOPLC_STD" TypeA="MC.CDT_MCTOPLC_PLANAR_TRACK" InOutA="0" GuidA="{5769ADF0-D6E6-40D9-B474-790A2A7F1D1F}" VarB="McToPlc^STD" RestoreInfo="ANotFound"/>
+							</OwnerB>
+							<OwnerB Name="TINC^XPlanar MC Project^Groups^Track3">
+								<Link VarA="GVL.XpTrack[3].MCTOPLC_STD" TypeA="MC.CDT_MCTOPLC_PLANAR_TRACK" InOutA="0" GuidA="{5769ADF0-D6E6-40D9-B474-790A2A7F1D1F}" VarB="McToPlc^STD" RestoreInfo="ANotFound"/>
 							</OwnerB>
 						</OwnerA>
 					</UnrestoredVarLinks>
@@ -29093,13 +29106,13 @@
 				<Link VarA="PlcTask Inputs^MAIN.XpEnv.MCTOPLC_STD" VarB="McToPlc^STD"/>
 			</OwnerB>
 			<OwnerB Name="TINC^XPlanar MC Project^Groups^Track1">
-				<Link VarA="PlcTask Inputs^GVL.XpTrack[1].MCTOPLC_STD" VarB="McToPlc^STD"/>
+				<Link VarA="PlcTask Inputs^MAIN.XpTrack[1].MCTOPLC_STD" VarB="McToPlc^STD"/>
 			</OwnerB>
 			<OwnerB Name="TINC^XPlanar MC Project^Groups^Track2">
-				<Link VarA="PlcTask Inputs^GVL.XpTrack[2].MCTOPLC_STD" VarB="McToPlc^STD"/>
+				<Link VarA="PlcTask Inputs^MAIN.XpTrack[2].MCTOPLC_STD" VarB="McToPlc^STD"/>
 			</OwnerB>
 			<OwnerB Name="TINC^XPlanar MC Project^Groups^Track3">
-				<Link VarA="PlcTask Inputs^GVL.XpTrack[3].MCTOPLC_STD" VarB="McToPlc^STD"/>
+				<Link VarA="PlcTask Inputs^MAIN.XpTrack[3].MCTOPLC_STD" VarB="McToPlc^STD"/>
 			</OwnerB>
 			<OwnerB Name="TINC^XPlanar MC Project^Groups^XPlanar">
 				<Link VarA="PlcTask Inputs^MAIN.XpGroup.MCTOPLC_STD" VarB="McToPlc^STD"/>

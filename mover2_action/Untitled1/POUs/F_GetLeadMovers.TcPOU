@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="F_GetLeadMovers" Id="{74a6b567-f61c-41cb-ac32-5df24d402938}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION F_GetLeadMovers : ST_LeadMovers
+VAR_INPUT
+	aMoverPos : ARAAY[1..2] OF LREAL;
+END_VAR
+VAR
+	i 		:	INT;
+	fMax1	: LREAL := -9999.0;
+	fMAx2	: LREAL := -9999.0;
+	nIdx1	: INT	:=1;
+	nIdx2	: INT	:=2;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FOR i:=1 TO 2 DO
+	IF aMoverPos[i] > fMaX1 then
+		fMax2 := fMax1;
+		nIdx2 := fIdx1;
+		fMax1 := aMoverPos[i];
+		nIdx1 := i;
+	ELSIF aMoverPos[i] > fMAx2 THEN
+		fMax2 := aMoverPos[i];
+		nIdx2 := i;
+	END_IF
+END_FOR
+
+F_GetLeadMovers.nFirst := nIdx1;
+F_GetLeadMovers.nSecond := nIdx2;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>
