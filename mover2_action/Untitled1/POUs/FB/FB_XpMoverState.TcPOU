@@ -29,9 +29,11 @@ VAR
 	Constraint_c		: DynamicConstraint_Coordinates;
 	stoption_c			: ST_MoveCOptions;
 	stOption_j			: ST_JoinTrackOptions;
+	stOption_l			: ST_LeaveTrackOptions;
 	i: INT;
 	ValueC				: LREAL := 300;
 	stTargetPos			: LREAL;
+	LeavePosition		: ARRAY [2..3] OF PositionXYC;
 
 END_VAR
 ]]></Declaration>
@@ -54,6 +56,13 @@ IF bResetMover THEN
 	nMoverState := 950;
 	eTaskMover := E_MoverTask.RESET_ERROR;
 END_IF
+
+//LeavePosition[2].SetValuesXYC(x:= 600, y:=100 , c:= 0);
+LeavePosition[2].x:=refMover.MCTOPLC.SET.SetPos.x;
+LeavePosition[2].y:=refMover.MCTOPLC.SET.SetPos.y;
+LeavePosition[2].c:=refMover.MCTOPLC.SET.SetPos.c;
+LeavePosition[3].SetValuesXYC(x:= 360, y:=100 , c:= 0);
+
 
 CASE nMoverState OF
 	0://IDLE
@@ -118,7 +127,7 @@ CASE nMoverState OF
 	refMover.MoveOnTrack(
 		commandFeedback:= MSFeedback[2], 
 		targetTrack:= refTrack[1], 
-		targetPositionOnTrack:= refTrack[1].GetLength(),
+		targetPositionOnTrack:= refTrack[1].GetLength()-10,
 		constraint:= Constraint[1], 
 		options:= stOption[1]);
 		nMoverState:=301;
@@ -181,7 +190,7 @@ CASE nMoverState OF
 	refMover.MoveOnTrack(
 		commandFeedback:= MSFeedback[8], 
 		targetTrack:= refTrack[2], 
-		targetPositionOnTrack:= 210, 
+		targetPositionOnTrack:= 250, 
 		constraint:= Constraint[2], 
 		options:= stOption[2]);
 			nMoverState:=551;
@@ -201,7 +210,7 @@ CASE nMoverState OF
 	refMover.MoveOnTrack(
 		commandFeedback:= MSFeedback[5], 
 		targetTrack:= refTrack[3], 
-		targetPositionOnTrack:= refTrack[3].GetLength()/2,
+		targetPositionOnTrack:= refTrack[3].GetLength(),
 		constraint:= Constraint[2], 
 		options:= stOption[2]);
 		nMoverState:=601;
@@ -221,7 +230,7 @@ CASE nMoverState OF
 	refMover.MoveOnTrack(
 		commandFeedback:= MSFeedback[9], 
 		targetTrack:= refTrack[3], 
-		targetPositionOnTrack:= 0,
+		targetPositionOnTrack:=30,
 		constraint:= Constraint[2], 
 		options:= stOption[2]);
 		nMoverState:=651;
@@ -236,6 +245,7 @@ CASE nMoverState OF
 		bDoneMover := TRUE;
 		nMoverState := 0;
 	END_IF
+
 	
 	700://MOVE BIHIND T1
 		refMover.MoveOnTrack(
@@ -296,6 +306,7 @@ CASE nMoverState OF
 		
 END_CASE
 
+
 stOption[1].gap := 170.0;
 stOption[2].gap := 170.0 (*118.0*);
 
@@ -317,6 +328,8 @@ Constraint_c.SetLimit(
 	A:= 7000, 
 	D:= 7000, 
 	J:= 35000);
+	
+
 
 (*
 refMover.Update();

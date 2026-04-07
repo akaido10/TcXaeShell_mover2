@@ -133,6 +133,11 @@ VAR
 	tPause: BOOL;
 	iEnableMover			: INT;
 	nGearingState			: ARRAY [1..2] OF INT;
+	bT2Busy: BOOL;
+	geomSyncPoint			: IPlcGeometry2D;
+	fMasterSyncDist			: LREAL;
+	fSlaveSyncDist			: LREAL;
+	
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[update();
@@ -155,11 +160,11 @@ IF exeRestart THEN
 	nMoverState[2] := 0;
 	eTaskMover[1] :=E_MoverTask.IDLE;
 	eTaskMover[2] :=E_MoverTask.IDLE;
-	//fbMoverSeq[1].nMoverState :=0;
-	//fbMoverSeq[2].nMoverState :=0;
 	fbMoverSeq[1].bRestartMover :=1;
 	fbMoverSeq[2].bRestartMover :=1;
-	bTimerStart :=FALSE;	
+	nGearingState[1] :=0;
+	nGearingState[2] :=0;
+	bTimerStart :=FALSE;
 END_IF
 
 IF exeReset THEN
@@ -354,16 +359,31 @@ END_IF
     </Action>
     <Action Name="Gearing" Id="{2e4eeff1-d791-4a2e-a438-2332e86160e9}">
       <Implementation>
-        <ST><![CDATA[FOR i:=1 TO 2 DO
+        <ST><![CDATA[
+
+FOR i:=1 TO 2 DO
 	CASE nGearingState[i] OF
 		0:
 		IF nMainState =70 THEN
+			nGearingState[i] :=50;
+		END_IF
+		
+		50://Move To T1
+		IF NOT exeStop THEN
+			eTaskMover[i] := E_MoverTask.MOVE_END_T1;
+			nGearingState[i] := 51;
+		END_IF
+		
+		51:
+		IF bDoneMover[i] THEN
+			eTaskMover[i] :=E_MoverTask.IDLE;
 			nGearingState[i] :=100;
 		END_IF
 		
 		100://Track select T2 or T3
-		IF XpTrack[2].MCTOPLC_STD.MovingMoverCount <1 THEN
+		IF XpTrack[2].MCTOPLC_STD.MovingMoverCount <1 AND NOT bT2Busy THEN
 			eTaskMover[i] := E_MoverTask.MOVE_TO_START_T2;
+			bT2Busy :=TRUE;
 			nGearingState[i] :=110;
 		ELSE
 			eTaskMover[i] := E_MoverTask.MOVE_TO_START_T3;
@@ -385,7 +405,7 @@ END_IF
 		END_IF
 		
 		120://T2 Mastar
-		IF NOT exeStop THEN
+		IF NOT exeStop AND nGearingState[3-i]=130 THEN
 			eTaskMover[i] := E_MoverTask.MOVE_TO_T2;
 			nGearingState[i] := 121;
 		END_IF
@@ -393,18 +413,21 @@ END_IF
 		121:
 		IF bDoneMover[i] THEN
 			eTaskMover[i] :=E_MoverTask.IDLE;
+			bT2Busy := FALSE;
 			nGearingState[i] :=200;
 		END_IF
 		
 		130://T3 Slave
+		fMasterSyncDist := 250;
+		fSlaveSyncDist := 30;
 		IF NOT exeStop THEN
 			XpMover[i].GearInPosOnTrackWithMasterMover(
 	commandFeedback:= GrFeedback[0], 
 	masterMover:= xpMover[3-i], 
 	trackTrail:= XpTrackTrail[3], 
-	masterSyncPosition:= 200, 
+	masterSyncPosition:= fMasterSyncDist, 
 	masterSyncPositionTrack:= xptrack[2], 
-	slaveSyncPosition:= 0, 
+	slaveSyncPosition:= fSlaveSyncDist, 
 	slaveSyncPositionTrack:= xptrack[3], 
 	constraint:= Constraint[1], 
 	options:= 0);
@@ -413,29 +436,25 @@ END_IF
 		
 		131:
 		IF XpMover[i].MCTOPLC.SETONTRACK.SetPos > 300 THEN
-			XpMover[i].Halt(commandFeedback :=XpFeedback[i][26], constraint:=Constraint[1]);
-			nGearingState[i] :=200;
+			eTaskMover[i] := E_MoverTask.MOVE_TO_T3;
+			nGearingState[i] :=132;
 		END_IF	
 		
-		200://Move To T1
-		IF NOT exeStop THEN
-			eTaskMover[i] := E_MoverTask.MOVE_END_T1;
-			nGearingState[i] := 201;
-		END_IF
-		
-		201:
+		132:
 		IF bDoneMover[i] THEN
-			eTaskMover[i] :=E_MoverTask.IDLE;
-			nGearingState[i] :=300;
+			eTaskMover[i] := E_MoverTask.IDLE;
+			nGearingState[i]:= 200;
 		END_IF
+
 		
-		300:
+		200:
 		IF NOT exeStop THEN
-			nGearingState[i] := 100;
+			nGearingState[i] := 50;
 		END_IF
 		
 	END_CASE
 END_FOR
+XpTrackTrail[3].AddTrack(track :=xpTrack[1]);
 XpTrackTrail[3].AddTrack(track :=XpTrack[3]);]]></ST>
       </Implementation>
     </Action>
@@ -702,6 +721,10 @@ FOR i := 0 TO 30 DO
 	XpFeedback[1][i].Update();
 	XpFeedback[2][i].Update();	
 	ManualFeedback[i].Update();
+END_FOR
+
+FOR i :=0 TO 10 DO
+	GrFeedback[i].Update();
 END_FOR]]></ST>
       </Implementation>
     </Action>
