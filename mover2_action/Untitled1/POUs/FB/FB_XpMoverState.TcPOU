@@ -16,7 +16,7 @@ END_VAR
 VAR_IN_OUT
 	stParams : ST_MoverParams;
 	refMover 	: MC_PlanarMover;
-	refTrack	: ARRAY [1..3] OF MC_PlanarTrack;
+	refTrack	: ARRAY [1..5] OF MC_PlanarTrack;
 END_VAR
 VAR
 	MSFeedback			: ARRAY [0..30] OF MC_PlanarFeedback;
@@ -190,7 +190,7 @@ CASE nMoverState OF
 	refMover.MoveOnTrack(
 		commandFeedback:= MSFeedback[8], 
 		targetTrack:= refTrack[2], 
-		targetPositionOnTrack:= 250, 
+		targetPositionOnTrack:= 20, 
 		constraint:= Constraint[2], 
 		options:= stOption[2]);
 			nMoverState:=551;
@@ -230,7 +230,7 @@ CASE nMoverState OF
 	refMover.MoveOnTrack(
 		commandFeedback:= MSFeedback[9], 
 		targetTrack:= refTrack[3], 
-		targetPositionOnTrack:=30,
+		targetPositionOnTrack:=20,
 		constraint:= Constraint[2], 
 		options:= stOption[2]);
 		nMoverState:=651;

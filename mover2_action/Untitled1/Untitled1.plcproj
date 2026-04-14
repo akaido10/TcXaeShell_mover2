@@ -88,9 +88,6 @@
     <Compile Include="POUs\FB\FB_XpMoverInit.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="POUs\F_GetLeadMovers.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="POUs\MAIN.TcPOU">
       <SubType>Code</SubType>
     </Compile>
@@ -169,6 +166,10 @@
       <Namespace>Tc3_Module</Namespace>
       <SystemLibrary>true</SystemLibrary>
     </PlaceholderReference>
+    <PlaceholderReference Include="Tc3_PackML_V3">
+      <DefaultResolution>Tc3_PackML_V3, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc3_PackML_V3</Namespace>
+    </PlaceholderReference>
     <PlaceholderReference Include="Tc3_Physics">
       <DefaultResolution>Tc3_Physics, * (Beckhoff Automation GmbH)</DefaultResolution>
       <Namespace>Tc3_Physics</Namespace>
@@ -180,6 +181,10 @@
     <PlaceholderReference Include="VisuDialogs">
       <DefaultResolution>VisuDialogs, * (System)</DefaultResolution>
       <Namespace>VisuDialogs</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="XPlanarApplication">
+      <DefaultResolution>XPlanarApplication, * (Beckhoff Automation LLC)</DefaultResolution>
+      <Namespace>XPlanarApplication</Namespace>
     </PlaceholderReference>
   </ItemGroup>
   <ItemGroup>
