@@ -4,16 +4,16 @@
     <Declaration><![CDATA[PROGRAM MAIN
 VAR
 	//インスタンス作成
-	XpMover					: ARRAY [1..2] OF MC_PlanarMover;
+	XpMover					: ARRAY [1..GVL.MAX_MOVER] OF MC_PlanarMover;
 	XpGroup					: MC_PlanarGroup;
 	XpEnv					: MC_PlanarEnvironment;
-	XpTrack					: ARRAY [1..5] OF MC_PlanarTrack; 
-	XpFeedback				: ARRAY [1..2] OF ARRAY [0..30] OF MC_PlanarFeedback;
-	XpTrackTrail			: ARRAY [1..3] OF MC_PlanarTrackTrail;
+	XpTrack					: ARRAY [1..GVL.MAX_TRACK] OF MC_PlanarTrack; 
+	XpFeedback				: ARRAY [1..GVL.MAX_MOVER] OF ARRAY [0..30] OF MC_PlanarFeedback;
+	XpTrackTrail			: ARRAY [1..GVL.MAX_TRACK] OF MC_PlanarTrackTrail;
 	stMoverTrackOpt 		: ST_MoveOnTrackOptions;
 	ManualFeedback			: ARRAY [0..30] OF MC_PlanarFeedback;
 	GrFeedback				: ARRAY[0..10] OF MC_PlanarFeedbackGearInPosOnTrackWithMasterMover;
-	eTaskMover				: ARRAY[1..2] OF E_MoverTask;
+	eTaskMover				: ARRAY[1..GVL.MAX_MOVER] OF E_MoverTask;
 	eState 					: E_State;
 	stMainParams			: ST_MoverParams;
 
@@ -21,8 +21,8 @@ VAR
 	exeInit					: BOOL := TRUE;
 	exeXpEnableMover		: BOOL;
 	exeXpDisableMover		: BOOL;
-	exeXpEnableMover_Ind	: ARRAY [1..2] OF BOOL;
-	exeXpDisableMover_Ind	: ARRAY [1..2] OF BOOL;
+	exeXpEnableMover_Ind	: ARRAY [1..GVL.MAX_MOVER] OF BOOL;
+	exeXpDisableMover_Ind	: ARRAY [1..GVL.MAX_MOVER] OF BOOL;
 	exeXpEnableGroup		: BOOL := TRUE;
 	exeXpEnableEnv			: BOOL := TRUE;
 	exeXpEnableTrack		: BOOL := TRUE; 
@@ -43,18 +43,18 @@ VAR
 	exeResetTrack			: BOOL;
 
 
-	fbEnableMover			: ARRAY[1..2] OF FB_XpEnableMover;
-	FbDisableMover 			: ARRAY[1..2] OF FB_XpDisableMover;
+	fbEnableMover			: ARRAY[1..GVL.MAX_MOVER] OF FB_XpEnableMover;
+	FbDisableMover 			: ARRAY[1..GVL.MAX_MOVER] OF FB_XpDisableMover;
 	FbEnableGroup			: FB_XpEnableGroup;
 	FbEnableEnv				: FB_XpEnableEnvironment;
-	FbEnableTrack			: ARRAY[1..5] OF FB_XpEnableTrack;
-	Movercount 				: ARRAY [1..2] OF FB_McPlanarTrack; //Track上のMover数
+	FbEnableTrack			: ARRAY[1..GVL.MAX_TRACK] OF FB_XpEnableTrack;
+	Movercount 				: ARRAY [1..GVL.MAX_MOVER] OF FB_McPlanarTrack; //Track上のMover数
 	fbAutoScan				: FB_XPlanarAutoScan; //初期化シーケンス実行
 	JoinTrack1				: FB_XpJoinTrack;
 	MoverTrack1				: FB_XpMoveTrack;
-	FBMoveZUp				: ARRAY[1..2] OF FB_XpMoveZ;
-	fbMoverSeq 				: ARRAY[1..2] OF FB_XpMoverState; //作業者FB
-	fbMoverInit				: ARRAY[1..2] OF FB_XpMoverInit;
+	FBMoveZUp				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoveZ;
+	fbMoverSeq 				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoverState; //作業者FB
+	fbMoverInit				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoverInit;
 	
 	//外部PLCとのIO
 	EipIntInput 	AT %I*	:ARRAY[0..32] OF INT;
@@ -82,7 +82,7 @@ VAR
 	targetnum				: INT;
 	endnum					: INT;
 	startnum				: INT;
-	MainSequence			: ARRAY [1..2] OF INT;
+	MainSequence			: ARRAY [1..GVL.MAX_MOVER] OF INT;
 	InitialSequence			: INT;
 	t						: INT;
 	T_EnableMoverReset		: TON;
@@ -91,33 +91,35 @@ VAR
 
 	JoinState				: ARRAY [1..2] OF BOOL;
 	
-	nMoverCount				: UDINT;
+	nMoverCount				: INT ;
 	
 	intvalue 				: ARRAY[1..10] OF INT;
 	n						: INT;
-	nState					: ARRAY [1..2] OF E_State;
+	nState					: ARRAY [1..GVL.MAX_MOVER] OF E_State;
 	bAllDoneE				: BOOL;
 	bAllDoneD				: BOOL;
 	bHasErrorE				: BOOL;
 	bHasErrorD				: BOOL;	
 	bMoverEnable			: ARRAY [0..2] OF BOOL;
 	bMoverDisable			: ARRAY [0..2] OF BOOL;
-	
-
+	bAllMoverEnable			: BOOL:= TRUE;
+	JoinOrder				: ARRAY [1..gvl.MAX_MOVER] OF INT;
+	tempID					: INT;
+		
 	ManualCollisionError	: ARRAY [0..10] OF BOOL;
 	FirstCollisionError		: ARRAY [0..10] OF BOOL;
 	iPriMover				: INT;
 	
-	VisVar 					: ARRAY[1..2]OF ARRAY[0..3] OF LREAL;
+	VisVar 					: ARRAY[1..GVL.MAX_MOVER]OF ARRAY[0..3] OF LREAL;
 	RotationTarget			: LREAL;
 	TON1					: TON;
 	bPause					: BOOL;
 	tCount					: TIME;
 	
 	nMainState				: INT;
-	bDoneMover				: ARRAY [1..2] OF BOOL;
+	bDoneMover				: ARRAY [1..GVL.MAX_MOVER] OF BOOL;
 	bTimerStart				: BOOL;
-	nMoverState				: ARRAY [1..2] OF INT;
+	nMoverState				: ARRAY [1..GVL.MAX_MOVER] OF INT;
 	bTrack2Busy				: BOOL;
 
 	bInitScan				: BOOL := TRUE;
@@ -126,17 +128,25 @@ VAR
 	stTargetPos				: ARRAY [2..3] OF Tc3_Mc3PlanarMotion.PositionXYC;
 
 	exeStop_os: BOOL;
-	nMultiplier				: ARRAY [1..2] OF DINT;
+	nMultiplier				: ARRAY [1..GVL.MAX_MOVER] OF DINT;
 	nOldEipInput			: ARRAY [0..32] OF INT;
-	nVisionValue			:ARRAY [1..2] OF INT;
+	nVisionValue			: ARRAY [1..GVL.MAX_MOVER] OF INT;
 	TON2: Ton;
 	tPause: BOOL;
 	iEnableMover			: INT;
-	nGearingState			: ARRAY [1..2] OF INT;
+	nGearingState			: ARRAY [1..GVL.MAX_MOVER] OF INT;
 	bT2Busy: BOOL;
 	geomSyncPoint			: IPlcGeometry2D;
 	fMasterSyncDist			: LREAL;
 	fSlaveSyncDist			: LREAL;
+	
+	bJoinDone				: BOOL:= FALSE;
+	nIndex					: INT :=1; //1 - GVL.MAX_MOVER
+	nSubState				: INT; //Join Sequence
+	fZeroVelo				: LREAL := 0.1; //Minimam Velo
+	timerCA					: TON; //CA Check behind
+	
+	bBeforeLink				: BOOL;
 	
 END_VAR]]></Declaration>
     <Implementation>
@@ -146,8 +156,7 @@ initial2();
 ManualMove();
 VisualizationVariable();
 JoinTrack();
-//Rotate();
-Gearing();
+Parallel();
 
 EIPIntOutput[0] := intvalue[1];
 intvalue[2] := EipIntInput[0];
@@ -187,137 +196,13 @@ FOR i := 1 TO 2 DO
 		eTaskMover := etaskMover[i],
 		refMover :=XpMover[i],
 		refTrack :=XpTrack,
-		bDoneMover => bDoneMover[i]
+		bDoneMover => bDoneMover[i],
+		reftrail :=XpTrackTrail[3]
 		);
 END_FOR
+
 ]]></ST>
     </Implementation>
-    <Action Name="Branch" Id="{3b656104-f847-4cdb-a743-d3a77c5cab48}">
-      <Implementation>
-        <ST><![CDATA[CASE nMoverState[1] OF
-	0:
-	IF nMainState = 70 THEN
-(*		TON2(IN:=tPause , PT:=T#5S);
-		tPause:=TRUE;
-		IF TON2.Q THEN
-			TON2(IN:=FALSE);
-			tPause:=FALSE;
-*)
-			nMoverState[1] :=160;
-//		END_IF
-	END_IF
-	
-	160://【ループ開始】　mover1はT2,mover2はT3へ移動させる
-	bDoneMover[1] := FALSE;
-	bTrack2Busy := TRUE;
-	bTimerStart := FALSE;
-	TON1(IN := FALSE);
-	eTaskMover[1] := E_MoverTask.MOVE_HALF_T2;
-	nMoverState[1] := 170;
-	
-	170:
-	IF bDoneMover[1] THEN
-		bDoneMover[1] := FALSE;
-		eTaskMover[1] := E_MoverTask.IDLE;
-		nMoverState[1] :=172;
-	END_IF
-	
-	(*
-	170:
-	IF bDoneMover[1] THEN
-		bDoneMover[1] := FALSE;
-		eTaskMover[1] := E_MoverTask.IDLE;
-		bTimerStart := TRUE;
-		nMoverState[1]:= 172;
-	END_IF
-	
-	
-	172://Timer
-	IF TON1.Q AND NOT exeStop THEN
-		bTimerStart := FALSE;
-		eTaskMover[1] := E_MoverTask.MOVE_TO_T2;
-		bDoneMover[1] := FALSE;
-		nMoverState[1] := 180;
-
-	END_IF
-	*)
-	
-	172: //Rotation
-	IF NOT exeStop THEN
-		eTaskMover[1] := E_MoverTask.MOVE_C_ROTATE;
-		nMoverState[1] := 173;
-	END_IF
-	
-
-	173:
-	IF bDoneMover[1] THEN 
-		eTaskMover[1] := E_MoverTask.IDLE;
-		nMoverState[1] :=175;
-	
-END_IF	
-	
-	175://Mover1はtrack2の最後まで送る
-	IF NOT exeStop THEN
-		eTaskMover[1] := E_MoverTask.MOVE_TO_T2;
-		bDoneMover[1] := FALSE;
-		nMoverState[1] := 180;
-	END_IF
-	
-	180:
-	IF bDoneMover[1] AND NOT exeStop THEN
-		eTaskMover[1] := E_MoverTask.IDLE;
-		bTrack2Busy := FALSE;
-		nMoverState[1] := 185;
-	END_IF
-	
-	185://Track1へ送る
-		eTaskMover[1] := E_MoverTask.MOVE_END_T1;
-		bDoneMover[1] := FALSE;
-		nMoverState[1] := 190;
-	
-	190://確認後IDLEにする
-	IF bDoneMover[1] AND NOT exeStop THEN
-		eTaskMover[1] := E_MoverTask.IDLE;
-		nMoverState[1] := 160;
-	END_IF
-END_CASE
-
-
-CASE nMoverState[2] OF
-	0:
-	IF nMainState = 70 THEN
-		nMoverState[2] :=160;
-	END_IF
-	
-	160://【ループ開始】　
-	IF bTrack2Busy THEN
-		eTaskMover[2] := E_MoverTask.MOVE_TO_T3;
-	ELSE
-		eTaskMover[2] := E_MoverTask.MOVE_TO_T2;
-	END_IF
-	nMoverState[2] := 165;
-	
-	165:
-	IF bDoneMover[2] AND NOT exeStop THEN
-		eTaskMover[2] := E_MoverTask.IDLE;
-		nMoverState[2] := 180;
-	END_IF
-	
-	180://Track1へ送る
-		eTaskMover[2] := E_MoverTask.MOVE_END_T1;
-		nMoverState[2] := 190;
-	
-	190://確認後IDLEにする
-	IF bDoneMover[2] AND NOT exeStop THEN
-		eTaskMover[2] := E_MoverTask.IDLE;
-		bDoneMover[2] := FALSE;
-		nMoverState[2] := 0;
-	END_IF
-	
-
-END_CASE]]></ST>
-      </Implementation>
-    </Action>
     <Action Name="Condition" Id="{f6e6baf7-adea-40b3-a444-17ee6bd7da1e}">
       <Implementation>
         <ST><![CDATA[FOR i:=1 TO 2 DO
@@ -357,107 +242,6 @@ END_IF
 ]]></ST>
       </Implementation>
     </Action>
-    <Action Name="Gearing" Id="{2e4eeff1-d791-4a2e-a438-2332e86160e9}">
-      <Implementation>
-        <ST><![CDATA[
-
-FOR i:=1 TO 2 DO
-	CASE nGearingState[i] OF
-		0:
-		IF nMainState =70 THEN
-			nGearingState[i] :=50;
-		END_IF
-		
-		50://Move To T1
-		IF NOT exeStop THEN
-			eTaskMover[i] := E_MoverTask.MOVE_END_T1;
-			nGearingState[i] := 51;
-		END_IF
-		
-		51:
-		IF bDoneMover[i] THEN
-			eTaskMover[i] :=E_MoverTask.IDLE;
-			nGearingState[i] :=100;
-		END_IF
-		
-		100://Track select T2 or T3
-		IF XpTrack[2].MCTOPLC_STD.MovingMoverCount <1 AND NOT bT2Busy THEN
-			eTaskMover[i] := E_MoverTask.MOVE_TO_START_T2;
-			bT2Busy :=TRUE;
-			nGearingState[i] :=110;
-		ELSE
-			eTaskMover[i] := E_MoverTask.MOVE_TO_START_T3;
-			nGearingState[i] :=111; //Mover3台以上になったら変更必要
-		END_IF
-		
-		110:
-		IF bDoneMover[i] THEN
-			bDoneMover[i] := FALSE;
-			eTaskMover[i] := E_MoverTask.IDLE;
-			nGearingState[i] :=120;
-		END_IF
-		
-		111:
-		IF bDoneMover[i] THEN
-			bDoneMover[i] := FALSE;
-			eTaskMover[i] := E_MoverTask.IDLE;
-			nGearingState[i] :=130;
-		END_IF
-		
-		120://T2 Mastar
-		IF NOT exeStop AND nGearingState[3-i]=130 THEN
-			eTaskMover[i] := E_MoverTask.MOVE_TO_T2;
-			nGearingState[i] := 121;
-		END_IF
-		
-		121:
-		IF bDoneMover[i] THEN
-			eTaskMover[i] :=E_MoverTask.IDLE;
-			bT2Busy := FALSE;
-			nGearingState[i] :=200;
-		END_IF
-		
-		130://T3 Slave
-		fMasterSyncDist := 25;
-		fSlaveSyncDist := 25;
-		IF NOT exeStop THEN
-			XpMover[i].GearInPosOnTrackWithMasterMover(
-	commandFeedback:= GrFeedback[0], 
-	masterMover:= xpMover[3-i], 
-	trackTrail:= XpTrackTrail[3], 
-	masterSyncPosition:= fMasterSyncDist, 
-	masterSyncPositionTrack:= xptrack[2], 
-	slaveSyncPosition:= fSlaveSyncDist, 
-	slaveSyncPositionTrack:= xptrack[3], 
-	constraint:= Constraint[1], 
-	options:= 0);
-			nGearingState[i] := 131;
-		END_IF
-		
-		131:
-		IF XpMover[i].MCTOPLC.SETONTRACK.SetPos > 300 THEN
-			eTaskMover[i] := E_MoverTask.MOVE_TO_T3;
-			nGearingState[i] :=132;
-		END_IF	
-		
-		132:
-		IF bDoneMover[i] THEN
-			eTaskMover[i] := E_MoverTask.IDLE;
-			nGearingState[i]:= 200;
-		END_IF
-
-		
-		200:
-		IF NOT exeStop THEN
-			nGearingState[i] := 50;
-		END_IF
-		
-	END_CASE
-END_FOR
-XpTrackTrail[3].AddTrack(track :=xpTrack[1]);
-XpTrackTrail[3].AddTrack(track :=XpTrack[3]);]]></ST>
-      </Implementation>
-    </Action>
     <Action Name="initial2" Id="{d672ac3f-3bb3-4f80-931e-70311a3e2c1d}">
       <Implementation>
         <ST><![CDATA[IF NOT fbAutoScan.bDone THEN
@@ -488,16 +272,33 @@ CASE iEnableMover OF
 	IF XpMover[2].MCTOPLC.STD.State = MC_PLANAR_STATE.Enabled THEN
 	iEnableMover := 5;
 	END_IF
+	5:
+	fbMoverInit[3].exeXpEnableMover_Ind:= TRUE;
+	iEnableMover := 6;
+	6:
+	IF XpMover[3].MCTOPLC.STD.State = MC_PLANAR_STATE.Enabled THEN
+	iEnableMover := 7;
+	END_IF
 END_CASE
 
+FOR i:=1 TO GVL.MAX_MOVER DO
+	IF NOT XpMover[i].MCTOPLC.STD.State = MC_PLANAR_STATE.Enabled THEN
+		bAllMoverEnable	:= FALSE;
+		EXIT;
+	END_IF
+END_FOR
+
 IF exeXpDisableMover THEN
-	fbMoverInit[1].exeXpDisableMover_Ind := TRUE;
-	fbMoverInit[2].exeXpDisableMover_Ind := TRUE;
+	FOR i:=1 TO GVL.MAX_MOVER DO
+	fbMoverInit[i].exeXpDisableMover_Ind := TRUE;
+	END_FOR
 	exeXpDisableMover := FALSE;
 END_IF
 
-fbMoverInit[1](refMover := XpMover[1], xpGroup := xpGroup);
-fbMoverInit[2](refMover := XpMover[2], xpGroup := xpGroup);
+FOR i:=1 TO GVL.MAX_MOVER DO
+fbMoverInit[i](refMover := XpMover[i], xpGroup := xpGroup);	
+END_FOR
+
 
 IF exeReset THEN
 //	exeReset :=FALSE;
@@ -560,6 +361,99 @@ END_IF]]></ST>
     <Action Name="JoinTrack" Id="{c57da7f2-b0eb-4426-8036-28ffc2422c29}">
       <Implementation>
         <ST><![CDATA[CASE nMainState OF
+	0:
+	IF bAllMoverEnable AND exeStart THEN
+		nMainState := 90;
+	END_IF
+	
+	90:
+	FOR i:=1 TO GVL.MAX_MOVER DO
+		JoinOrder[i] := i;
+	END_FOR
+	nMainState:= 100;
+	
+	100://判定 数字の若い順にする	
+	FOR i:=1 TO GVL.MAX_MOVER-1 DO
+		FOR n:=GVL.MAX_MOVER TO (i+1) BY -1 DO
+			IF JoinOrder[n] >0 AND JoinOrder[n-1] >0 THEN
+				IF XpMover[JoinOrder[n]].MCTOPLC.SET.SetPos.x < XpMover[JoinOrder[n-1]].MCTOPLC.SET.SetPos.x THEN
+				tempID			:= JoinOrder[n];
+				JoinOrder[n] 	:= JoinOrder[n-1];
+				JoinOrder[n-1] 	:= tempID;
+				END_IF
+			END_IF
+		END_FOR
+	END_FOR
+	nIndex := 1;
+	nSubState :=0;
+	nMainState := 200;
+	
+	200:
+		CASE nSubState OF
+			0: //Join
+			fbMoverSeq[JoinOrder[nIndex]].TargetNo := 1;
+			eTaskMover[JoinOrder[nIndex]] := E_MoverTask.JOIN;
+			nSubState := 10;
+			
+			10: //Idle
+			IF bDoneMover[JoinOrder[nIndex]] THEN
+					eTaskMover[JoinOrder[nIndex]] := E_MoverTask.IDLE;
+					nSubState := 20;
+			END_IF			
+
+			20://Move To T1
+			fbMoverSeq[JoinOrder[nIndex]].TargetNo := 1;
+			eTaskMover[JoinOrder[nIndex]] := E_moverTask.MOVE_TRACK;
+			fbMoverSeq[JoinOrder[nIndex]].bNextStep := FALSE;
+		
+			nSubState := 21;
+			
+			21://CA Check
+	
+				IF XpMover[JoinOrder[nIndex]].MCTOPLC.SETONTRACK.SetVelo < fZeroVelo THEN
+					timerCA(IN := TRUE, PT := T#1S);
+				ELSE
+					timerCA(IN := FALSE); 
+				END_IF
+			
+			IF timerCA.Q THEN
+				fbMoverSeq[JoinOrder[nIndex]].bNextStep := TRUE;
+			END_IF
+			
+			IF fbMoverSeq[JoinOrder[nIndex]].bDoneMover THEN				
+				nSubState := 30;
+			END_IF
+
+			30://GO to New Cycle
+			IF bDoneMover[JoinOrder[nIndex]] THEN
+				eTaskMover[JoinOrder[nIndex]] := E_MoverTask.IDLE;
+				IF nIndex < gvl.MAX_MOVER THEN
+					nIndex := nIndex + 1;
+					nSubState := 0;
+				ELSE
+					nMainState :=300;
+				END_IF
+			END_IF
+		END_CASE
+	
+	300:
+	bJoinDone	:= TRUE;
+	
+	999:
+	IF bDoneMover[1] AND bDoneMover[2] THEN
+		eTaskMover[1] :=E_MoverTask.IDLE;
+		eTaskMover[2] :=E_MoverTask.IDLE;
+		nMainState := 0;
+	END_IF
+	
+END_CASE
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="JoinTrack_1" Id="{581ebbb4-1abf-43c9-994f-5073c5ae3854}">
+      <Implementation>
+        <ST><![CDATA[(*
+CASE nMainState OF
 	0://各moverのx座標をもとにTrack2か3に入れる
 	IF bmoverEnable[1] AND bMoverEnable[2] AND exeStart THEN
 		exeStart :=FALSE;
@@ -659,6 +553,9 @@ END_IF]]></ST>
 		nMainState := 70;
 	END_IF
 	
+	70:
+	bJoinDone	:= TRUE;
+	
 	999:
 	IF bDoneMover[1] AND bDoneMover[2] THEN
 		eTaskMover[1] :=E_MoverTask.IDLE;
@@ -667,9 +564,7 @@ END_IF]]></ST>
 	END_IF
 	
 END_CASE
-
-	
-]]></ST>
+*)]]></ST>
       </Implementation>
     </Action>
     <Action Name="ManualMove" Id="{c3baa2a6-57e4-4564-a85d-05e83398f935}">
@@ -702,22 +597,137 @@ END_IF
 END_FOR]]></ST>
       </Implementation>
     </Action>
+    <Action Name="Parallel" Id="{2e4eeff1-d791-4a2e-a438-2332e86160e9}">
+      <Implementation>
+        <ST><![CDATA[FOR i:=1 TO gvl.MAX_MOVER DO
+	CASE nGearingState[i] OF
+		0:
+		IF bJoinDone THEN
+			nGearingState[i] :=50;
+		END_IF
+		
+		50://Move To T1
+		IF NOT exeStop THEN
+			fbMoverSeq[i].TargetNo := 1;
+			eTaskMover[i] := E_MoverTask.MOVE_TRACK;
+			nGearingState[i] := 51;
+		END_IF
+		
+		51:
+		IF bDoneMover[i] THEN
+			eTaskMover[i] :=E_MoverTask.IDLE;
+			nGearingState[i] :=100;
+		END_IF
+		
+		100://Track select T2 or T3
+		IF XpTrack[2].MCTOPLC_STD.MovingMoverCount = 0 AND NOT bT2Busy THEN
+			fbMoverSeq[i].TargetNo := 5;
+			eTaskMover[i] := E_MoverTask.MOVE_TRACK;
+			bT2Busy :=TRUE;
+			nGearingState[i] :=110;
+		ELSIF XpTrack[3].MCTOPLC_STD.MovingMoverCount = 0 THEN
+			fbMoverSeq[i].TargetNo := 4;
+			eTaskMover[i] := E_MoverTask.MOVE_TRACK;
+			nGearingState[i] :=111;
+		END_IF
+		
+		110:
+		IF bDoneMover[i] THEN
+			bDoneMover[i] := FALSE;
+			eTaskMover[i] := E_MoverTask.IDLE;
+			nGearingState[i] :=120;
+		END_IF
+		
+		111:
+		IF bDoneMover[i] THEN
+			bDoneMover[i] := FALSE;
+			eTaskMover[i] := E_MoverTask.IDLE;
+			bBeforeLink := TRUE;
+			nGearingState[i] :=130;
+		END_IF
+		
+		120://T2 Mastar
+		IF NOT exeStop AND bBeforeLink THEN
+			fbMoverSeq[i].TargetNo := 2;
+			eTaskMover[i] := E_MoverTask.MOVE_TRACK;
+			nGearingState[i] := 121;
+		END_IF
+		
+		121:
+		IF bDoneMover[i] THEN
+			eTaskMover[i] :=E_MoverTask.IDLE;
+			bT2Busy := FALSE;
+			nGearingState[i] :=300;
+		END_IF
+		 (*
+		122:
+		IF NOT exeStop THEN
+			eTaskMover[i] := E_MoverTask.MOVE_C_ROTATE;
+			nGearingState[i] := 123;
+		END_IF
+		
+		123:
+		IF bDoneMover[i] THEN
+			eTaskMover[i] := E_MoverTask.IDLE;
+			nGearingState[i] := 200;
+		END_IF
+		*)
+		130:
+		IF NOT exeStop THEN
+			fbMoverSeq[i].TargetNo := 3;
+			eTaskMover[i] := E_MoverTask.MOVE_TRACK;
+			nGearingState[i] :=131;
+		END_IF
+
+		131:
+		IF bDoneMover[i] THEN
+			eTaskMover[i] := E_MoverTask.IDLE;
+			bBeforeLink := FALSE;
+			nGearingState[i]:= 300;
+		END_IF
+		(*
+		132:
+		IF NOT exeStop THEN
+			eTaskMover[i] := E_MoverTask.MOVE_C_ROTATE;
+			nGearingState[i] := 133;
+		END_IF
+		
+		133:
+		IF bDoneMover[i] THEN
+			eTaskMover[i] := E_MoverTask.IDLE;
+			nGearingState[i] := 200;
+		END_IF
+*)
+		200:
+		
+		
+		300:
+		IF NOT exeStop THEN
+			nGearingState[i] := 50;
+		END_IF
+		
+	END_CASE
+END_FOR
+]]></ST>
+      </Implementation>
+    </Action>
     <Action Name="Update" Id="{b564147a-f79d-4898-a402-a4436ddab2c5}">
       <Implementation>
-        <ST><![CDATA[FOR i := 1 TO 2 DO
+        <ST><![CDATA[FOR i := 1 TO GVL.MAX_MOVER DO
 	XpMover[i].Update();
 END_FOR
 
 XpGroup.Update();
 XpEnv.Update();
 
-FOR i := 1 TO 5 DO
+FOR i := 1 TO GVL.MAX_TRACK DO
 	XpTrack[i].Update();
 END_FOR
 
 FOR i := 0 TO 30 DO
 	XpFeedback[1][i].Update();
-	XpFeedback[2][i].Update();	
+	XpFeedback[2][i].Update();
+	XpFeedback[3][i].Update();
 	ManualFeedback[i].Update();
 END_FOR
 

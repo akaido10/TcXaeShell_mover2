@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL" Id="{59d58ca0-1245-43be-8c30-d4f8da605190}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL CONSTANT
+	MAX_MOVER 	: INT:=3;
+	MAX_TRACK	: INT:=7;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

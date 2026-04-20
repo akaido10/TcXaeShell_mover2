@@ -9,6 +9,8 @@ VAR_INPUT
 	bResetMover			: BOOL;
 	bRestartMover		: BOOL;
 	nMoverState			: INT :=0 ;
+	TargetNo			: INT;
+	bNextStep			: BOOL;
 END_VAR
 VAR_OUTPUT
 	bDoneMover 		:BOOL;
@@ -16,10 +18,12 @@ END_VAR
 VAR_IN_OUT
 	stParams : ST_MoverParams;
 	refMover 	: MC_PlanarMover;
-	refTrack	: ARRAY [1..5] OF MC_PlanarTrack;
+	refTrack	: ARRAY [1..gvl.MAX_TRACK] OF MC_PlanarTrack;
+	reftrail	: MC_PlanarTrackTrail;
 END_VAR
 VAR
 	MSFeedback			: ARRAY [0..30] OF MC_PlanarFeedback;
+	GrFeedback			: ARRAY [0..30] OF MC_PlanarFeedbackGearInPosOnTrackWithMasterMover;
 	
 //	bDoneMover			: BOOL;
 	//eTaskMover			: E_MOVERTASK;
@@ -35,6 +39,8 @@ VAR
 	stTargetPos			: LREAL;
 	LeavePosition		: ARRAY [2..3] OF PositionXYC;
 
+	fMasterSyncDist: INT;
+	fSlaveSyncDist: INT;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -57,13 +63,6 @@ IF bResetMover THEN
 	eTaskMover := E_MoverTask.RESET_ERROR;
 END_IF
 
-//LeavePosition[2].SetValuesXYC(x:= 600, y:=100 , c:= 0);
-LeavePosition[2].x:=refMover.MCTOPLC.SET.SetPos.x;
-LeavePosition[2].y:=refMover.MCTOPLC.SET.SetPos.y;
-LeavePosition[2].c:=refMover.MCTOPLC.SET.SetPos.c;
-LeavePosition[3].SetValuesXYC(x:= 360, y:=100 , c:= 0);
-
-
 CASE nMoverState OF
 	0://IDLE
 	IF eTaskMover =E_MoverTask.IDLE THEN //IDLE状態で0に戻ったらbDoneMoverを0に戻す
@@ -71,224 +70,86 @@ CASE nMoverState OF
 	END_IF
 	
 		CASE eTaskMover OF
-			E_MoverTask.JOIN_T2 			: nMoverState :=100;
-			E_MoverTask.JOIN_T3				: nMoverState :=200;
-			E_MoverTask.MOVE_END_T1			: nMoverState :=300;
-			E_MoverTask.MOVE_HALF_T2		: nMoverState :=400;
-			E_MoverTask.MOVE_TO_T2 			: nMoverState :=500;
-			E_MoverTask.MOVE_TO_START_T2 	: nMoverState :=550;
-			E_MoverTask.MOVE_TO_T3 			: nMoverState :=600;
-			E_MoverTask.MOVE_TO_START_T3 	: nMoverState :=650;
-			E_MoverTask.MOVE_BEHIND_T1		: nMoverState :=700;
-			E_MoverTask.MOVE_C_ROTATE		: nMoverState :=800;
+			E_MoverTask.JOIN				: nMOverState :=100;
+			E_MoverTask.MOVE_TRACK			: nMoverState :=200;
+			E_MoverTask.MOVE_C_ROTATE		: nMoverState :=300;
+			E_MoverTask.RESET_ROTATE		: nMoverState :=900;
 			E_Movertask.RESET_ERROR			: nMoverState :=950;
 		END_CASE
 	
 	
-	100://JOIN T2
-	refMover.JoinTrack(commandFeedback:= MSFeedback[0], 
-				targetTrack:= refTrack[2], 
+	100://JOIN
+	refMover.JoinTrack(commandFeedback:= MSFeedback[1], 
+				targetTrack:= refTrack[TargetNo], //TargetNo = TrackNo
 				constraint:= constraint[2], 
 				options:= stOption_j);
 	nMoverState:=101;
 	
 	101:
-	IF (MSFeedback[0].Active OR MSFeedback[0].Done) THEN
+	IF (MSFeedback[1].Active OR MSFeedback[1].Done) THEN
 		nMoverState:=102;
 	END_IF	
 	
 	102:
-	IF MSFeedback[0].Done THEN
-		bDoneMover := TRUE;
-		nMoverState := 0;
-	END_IF
-
-
-	200://JOIN T3
-	refMover.JoinTrack(commandFeedback:= MSFeedback[1], 
-				targetTrack:= refTrack[3], 
-				constraint:= constraint[2], 
-				options:= stOption_j);
-	nMoverState:=201;
-	
-	201:
-	IF (MSFeedback[1].Active OR MSFeedback[1].Done) THEN
-		nMoverState:=202;
-	END_IF	
-	
-	202:
 	IF MSFeedback[1].Done THEN
 		bDoneMover := TRUE;
 		nMoverState := 0;
 	END_IF
+
 	
-	
-	300://MOVE T1
+	200://MOVE Track
 	refMover.MoveOnTrack(
 		commandFeedback:= MSFeedback[2], 
 		targetTrack:= refTrack[1], 
-		targetPositionOnTrack:= refTrack[1].GetLength()-10,
+		targetPositionOnTrack:= refTrack[TargetNo].GetLength(),
 		constraint:= Constraint[1], 
 		options:= stOption[1]);
-		nMoverState:=301;
+		nMoverState:=201;
 	
+	201:
+	IF (MSFeedback[2].Active OR MSFeedback[2].Done OR bNextStep) THEN
+		nMoverState:=202;
+	END_IF	
+	
+	202:
+	IF MSFeedback[2].Done OR bNextStep THEN
+		bDoneMover := TRUE;
+		nMoverState := 0;
+	END_IF
+	
+	300:
+	//足し算
+	stTargetPos := refMover.MCTOPLC.SET.SetPos.c + 720;
+	//C回転
+	refMover.MoveC(commandFeedback:=MSFeedback[3] ,
+			targetPosition:=stTargetPos ,
+			constraint:=constraint_c ,
+			options:=stOption_c);
+	nMoverState :=301;
 	
 	301:
-	IF (MSFeedback[2].Active OR MSFeedback[2].Done) THEN
+	IF (MSFeedback[3].Active OR MSFeedback[3].Done) THEN
 		nMoverState:=302;
 	END_IF	
 	
 	302:
-	IF MSFeedback[2].Done THEN
-		bDoneMover := TRUE;
-		nMoverState := 0;
-	END_IF
-
-	
-	400://MOVE T2 HALF
-	refMover.MoveOnTrack(
-		commandFeedback:= MSFeedback[3], 
-		targetTrack:= refTrack[2], 
-		targetPositionOnTrack:= refTrack[2].GetLength()/2, 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-		nMoverState:=401;
-		
-	401:
-	IF (MSFeedback[3].Active OR MSFeedback[3].Done) THEN
-		nMoverState:=402;
-	END_IF	
-	
-	402:
 	IF MSFeedback[3].Done THEN
 		bDoneMover := TRUE;
 		nMoverState := 0;
 	END_IF	
 	
-	
-	500://MOVE T2 END
-	refMover.MoveOnTrack(
-		commandFeedback:= MSFeedback[4], 
-		targetTrack:= refTrack[2], 
-		targetPositionOnTrack:= reftrack[2].GetLength(), 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-			nMoverState:=501;
-
-	501:
-	IF (MSFeedback[4].Active OR MSFeedback[4].Done) THEN
-		nMoverState:=502;
-	END_IF	
-	
-	502:
-	IF MSFeedback[4].Done THEN
-		bDoneMover := TRUE;
-		nMoverState := 0;
+	(*
+	900:
+	IF NOT refMover.MCTOPLC.STD.Busy THEN
+		refMover.SetPosition(commandFeedback := MSFeedback[29],
+			position := [refMover.MCTOPLC.ACT.ActPos.x,
+						refMover.MCTOPLC.ACT.ActPos.y,
+						refMover.MCTOPLC.ACT.ActPos.z,
+						refMover.MCTOPLC.ACT.ActPos.a,
+						refMover.MCTOPLC.ACT.ActPos.b,
+						0]);
 	END_IF
-	
-	550://MOVE T2 START
-	refMover.MoveOnTrack(
-		commandFeedback:= MSFeedback[8], 
-		targetTrack:= refTrack[2], 
-		targetPositionOnTrack:= 20, 
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-			nMoverState:=551;
-
-	551:
-	IF (MSFeedback[8].Active OR MSFeedback[8].Done) THEN
-		nMoverState:=552;
-	END_IF	
-	
-	552:
-	IF MSFeedback[8].Done THEN
-		bDoneMover := TRUE;
-		nMoverState := 0;
-	END_IF
-	
-	600://MOVE T3
-	refMover.MoveOnTrack(
-		commandFeedback:= MSFeedback[5], 
-		targetTrack:= refTrack[3], 
-		targetPositionOnTrack:= refTrack[3].GetLength(),
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-		nMoverState:=601;
-
-	601:
-	IF (MSFeedback[5].Active OR MSFeedback[5].Done) THEN
-		nMoverState:=602;
-	END_IF	
-	
-	602:
-	IF MSFeedback[5].Done THEN
-		bDoneMover := TRUE;
-		nMoverState := 0;
-	END_IF
-	
-	650://MOVE START T3
-	refMover.MoveOnTrack(
-		commandFeedback:= MSFeedback[9], 
-		targetTrack:= refTrack[3], 
-		targetPositionOnTrack:=20,
-		constraint:= Constraint[2], 
-		options:= stOption[2]);
-		nMoverState:=651;
-
-	651:
-	IF (MSFeedback[9].Active OR MSFeedback[9].Done) THEN
-		nMoverState:=652;
-	END_IF	
-	
-	652:
-	IF MSFeedback[9].Done THEN
-		bDoneMover := TRUE;
-		nMoverState := 0;
-	END_IF
-
-	
-	700://MOVE BIHIND T1
-		refMover.MoveOnTrack(
-		commandFeedback:= MSFeedback[6], 
-		targetTrack:= refTrack[1], 
-		targetPositionOnTrack:= reftrack[1].GetLength()/2, 
-		constraint:= Constraint[2], 
-		options:= stOption[1]);
-		nMoverState:=701;
-		
-	701:
-	IF (MSFeedback[6].Active OR MSFeedback[6].Done) THEN
-		nMoverState:=702;
-	END_IF	
-	
-	702:
-	IF MSFeedback[6].Done THEN
-		bDoneMover := TRUE;
-		nMoverState := 0;
-	END_IF	
-	
-	800:
-	//足し算
-	stTargetPos := refMover.MCTOPLC.SET.SetPos.c + 720;
-	//C回転
-	refMover.MoveC(commandFeedback:=MSFeedback[7] ,
-			targetPosition:=stTargetPos ,
-			constraint:=constraint_c ,
-			options:=stOption_c);
-	nMoverState :=801;
-	
-	801:
-	IF (MSFeedback[7].Active OR MSFeedback[7].Done) THEN
-		nMoverState:=802;
-	END_IF	
-	
-	802:
-	IF MSFeedback[7].Done THEN
-		bDoneMover := TRUE;
-		nMoverState := 0;
-	END_IF	
-	
-	
+	*)
 	950:
 	refMover.Reset(commandFeedBack :=MSFeedback[30]);
 	nMoverState :=951;
@@ -336,6 +197,7 @@ refMover.Update();
 *)
 FOR i:=0 TO 30 DO
 	MSFeedback[i].Update();
+	GrFeedback[i].Update();
 END_FOR]]></ST>
     </Implementation>
   </POU>
