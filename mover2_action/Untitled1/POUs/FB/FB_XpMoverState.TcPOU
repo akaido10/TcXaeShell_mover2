@@ -1,7 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
   <POU Name="FB_XpMoverState" Id="{a226981c-08b8-49d9-b98e-32c36b71e77d}" SpecialFunc="None">
-    <Declaration><![CDATA[{attribute 'no_assign'}
+    <Declaration><![CDATA[
+{attribute 'no_assign'}
 FUNCTION_BLOCK FB_XpMoverState
 VAR_INPUT
 	eTaskMover 			: E_Movertask :=1;
@@ -44,11 +45,9 @@ VAR
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[(*
-IF NOT __ISVALIDREF(refMover) THEN
+      <ST><![CDATA[IF ADR(refMover) = 0 THEN
 	RETURN;
 END_IF
-*)
 
 IF bRestartMover THEN
 	bRestartMover := FALSE;
@@ -76,7 +75,6 @@ CASE nMoverState OF
 			E_MoverTask.RESET_ROTATE		: nMoverState :=900;
 			E_Movertask.RESET_ERROR			: nMoverState :=950;
 		END_CASE
-	
 	
 	100://JOIN
 	refMover.JoinTrack(commandFeedback:= MSFeedback[1], 

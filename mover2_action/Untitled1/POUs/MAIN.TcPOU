@@ -52,7 +52,6 @@ VAR
 	fbAutoScan				: FB_XPlanarAutoScan; //初期化シーケンス実行
 	JoinTrack1				: FB_XpJoinTrack;
 	MoverTrack1				: FB_XpMoveTrack;
-	FBMoveZUp				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoveZ;
 	fbMoverSeq 				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoverState; //作業者FB
 	fbMoverInit				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoverInit;
 	
@@ -96,6 +95,8 @@ VAR
 	intvalue 				: ARRAY[1..10] OF INT;
 	n						: INT;
 	nState					: ARRAY [1..GVL.MAX_MOVER] OF E_State;
+	bAllEnabled				: BOOL;
+	bAllDisabled			: BOOL;
 	bAllDoneE				: BOOL;
 	bAllDoneD				: BOOL;
 	bHasErrorE				: BOOL;
@@ -142,12 +143,13 @@ VAR
 	
 	bJoinDone				: BOOL:= FALSE;
 	nIndex					: INT :=1; //1 - GVL.MAX_MOVER
-	nSubState				: INT; //Join Sequence
+	nSubState				: INT:= 0; //Join Sequence
 	fZeroVelo				: LREAL := 0.1; //Minimam Velo
 	timerCA					: TON; //CA Check behind
 	
 	bBeforeLink				: BOOL;
-	
+	EnableIdx				: INT;
+	ActiveIdx				: INT:=1;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[update();
@@ -191,7 +193,7 @@ END_IF
 
 TON1(IN :=bTimerStart, PT :=T#3S);
 
-FOR i := 1 TO 2 DO
+FOR i := 1 TO gvl.MAX_MOVER DO
 	fbMoverSeq[i](stParams := stMainParams,
 		eTaskMover := etaskMover[i],
 		refMover :=XpMover[i],
@@ -199,19 +201,19 @@ FOR i := 1 TO 2 DO
 		bDoneMover => bDoneMover[i],
 		reftrail :=XpTrackTrail[3]
 		);
-END_FOR
-
-]]></ST>
+END_FOR]]></ST>
     </Implementation>
     <Action Name="Condition" Id="{f6e6baf7-adea-40b3-a444-17ee6bd7da1e}">
       <Implementation>
-        <ST><![CDATA[FOR i:=1 TO 2 DO
+        <ST><![CDATA[//速度上限
+FOR i:=1 TO 2 DO
 Constraint[i].SetValuesVADJ(
 		V:= 200, 
 		A:= 7000, 
 		D:= 7000,
 		J:=35000);
-		
+
+//c回転用の速度上限		
 Constraint_c[i].SetLimit(
 	Coordinate:= Coord_Mcs_C1, 
 	V:= ValueC, 
@@ -224,17 +226,7 @@ END_FOR
 stMainParams.lrVelocity := valueV;
 stMainParams.lrVelocity_c := valueC;
 
-
-	(*
-Constraint_c.AddLimit( //上書きできないのでなし
-	Coordinate:= Coord_Mcs_C1, 
-	V:= valueC, 
-	A:= 7000, 
-	D:= 7000, 
-	J:= 35000);
-	*)
-		
-fbAutoScan(bExecute :=BInitScan);
+fbAutoScan(bExecute :=BInitScan); //IDバンパー読み込み開始
 IF fbAutoScan.bDone THEN
 	bInitScan := FALSE;
 END_IF
@@ -244,43 +236,46 @@ END_IF
     </Action>
     <Action Name="initial2" Id="{d672ac3f-3bb3-4f80-931e-70311a3e2c1d}">
       <Implementation>
-        <ST><![CDATA[IF NOT fbAutoScan.bDone THEN
+        <ST><![CDATA[//バンパーのスキャンが終わるまで、MoverをEnableさせない
+IF NOT fbAutoScan.bDone THEN
 	exeXpEnableMover := FALSE;
 END_IF
 
-//Enable Mover Sequence
-IF exeXpEnableMover THEN
-	iEnableMover :=0;
+// トリガーが入ったらステップ0から開始
+IF exeXpEnableMover AND iEnableMover = 100 THEN // 100は待機状態の例
+    iEnableMover := 0;
 END_IF
-CASE iEnableMover OF
-	0:
-	IF exeXpEnableMover THEN
-		exeXpEnableMover := FALSE;
-		iEnableMover :=1;
-	END_IF
-	1:
-	fbMoverInit[1].exeXpEnableMover_Ind:= TRUE;
-	iEnableMover :=2;
-	2:
-	IF XpMover[1].MCTOPLC.STD.State = MC_PLANAR_STATE.Enabled THEN
-	iEnableMover := 3;
-	END_IF
-	3:
-	fbMoverInit[2].exeXpEnableMover_Ind:= TRUE;
-	iEnableMover := 4;
-	4:
-	IF XpMover[2].MCTOPLC.STD.State = MC_PLANAR_STATE.Enabled THEN
-	iEnableMover := 5;
-	END_IF
-	5:
-	fbMoverInit[3].exeXpEnableMover_Ind:= TRUE;
-	iEnableMover := 6;
-	6:
-	IF XpMover[3].MCTOPLC.STD.State = MC_PLANAR_STATE.Enabled THEN
-	iEnableMover := 7;
-	END_IF
-END_CASE
 
+CASE iEnableMover OF
+    0: // 初期化
+        IF exeXpEnableMover THEN
+            exeXpEnableMover := FALSE;
+            EnableIdx := 1; // 1番目からスタート
+            iEnableMover := 1;
+        END_IF
+
+    1: // 対象のMoverにEnable指令を出す
+        fbMoverInit[EnableIdx].exeXpEnableMover_Ind := TRUE;
+        iEnableMover := 2;
+
+    2: // Enable完了を待つ
+        IF XpMover[EnableIdx].MCTOPLC.STD.State = MC.MC_PLANAR_STATE.Enabled THEN
+            // 指令フラグを下ろす（FBの仕様に合わせて調整）
+            fbMoverInit[EnableIdx].exeXpEnableMover_Ind := FALSE;
+            
+            // 次のMoverがあるかチェック
+            IF EnableIdx < gvl.MAX_MOVER THEN
+                EnableIdx := EnableIdx + 1; // 次の番号へ
+                iEnableMover := 1; // ステップ1に戻って繰り返す
+            ELSE
+                iEnableMover := 100; // 全台完了！待機へ
+            END_IF
+        END_IF
+        
+    100: // 完了・待機
+        ; 
+END_CASE
+//一つでもEnable出来ていないMoverがあれば信号をFALSEにする
 FOR i:=1 TO GVL.MAX_MOVER DO
 	IF NOT XpMover[i].MCTOPLC.STD.State = MC_PLANAR_STATE.Enabled THEN
 		bAllMoverEnable	:= FALSE;
@@ -288,6 +283,7 @@ FOR i:=1 TO GVL.MAX_MOVER DO
 	END_IF
 END_FOR
 
+//Disableは一斉に実行
 IF exeXpDisableMover THEN
 	FOR i:=1 TO GVL.MAX_MOVER DO
 	fbMoverInit[i].exeXpDisableMover_Ind := TRUE;
@@ -295,20 +291,13 @@ IF exeXpDisableMover THEN
 	exeXpDisableMover := FALSE;
 END_IF
 
+//initのFBを呼び出し
 FOR i:=1 TO GVL.MAX_MOVER DO
-fbMoverInit[i](refMover := XpMover[i], xpGroup := xpGroup);	
+	fbMoverInit[i](refMover := XpMover[i], xpGroup := xpGroup);	
 END_FOR
 
 
-IF exeReset THEN
-//	exeReset :=FALSE;
-//	fbMoverInit[1].exereset := TRUE;
-//	fbMoverInit[2].exereset := TRUE;
-//ELSE
-//	fbMoverInit[1].exereset := FALSE;
-//	fbMoverInit[2].exereset := FALSE;
-END_IF
-
+//Mover個々のEnable,Disableを外部PLCから指示する（通信が増えるため廃止？）
 FOR i:=1 TO 4 DO
 	IF EipIntInput[i+1] =1 THEN
 		exeinput[i] := TRUE;
@@ -318,17 +307,16 @@ FOR i:=1 TO 4 DO
 END_FOR
 
 FOR i:=1 TO 2 DO
-IF EipIntInput[i+1]=1 THEN
-	fbMoverInit[i].exeXpEnableMover_Ind:= TRUE;
-ELSE
-	fbMoverInit[i].exeXpEnableMover_Ind:= FALSE;
-END_IF
-IF EipIntInput[i+3]=1 THEN
-	fbMoverInit[i].exeXpDisableMover_Ind:= TRUE;
-ELSE
-	fbMoverInit[i].exeXpDisableMover_Ind:= FALSE;
-END_IF
-
+	IF EipIntInput[i+1]=1 THEN
+		fbMoverInit[i].exeXpEnableMover_Ind:= TRUE;
+	ELSE
+		fbMoverInit[i].exeXpEnableMover_Ind:= FALSE;
+	END_IF
+	IF EipIntInput[i+3]=1 THEN
+		fbMoverInit[i].exeXpDisableMover_Ind:= TRUE;
+	ELSE
+		fbMoverInit[i].exeXpDisableMover_Ind:= FALSE;
+	END_IF
 END_FOR
 
 //環境情報を有効化
@@ -348,7 +336,7 @@ END_IF
 	
 //Trackを有効化
 IF exeXpEnableTrack THEN
-	FOR i:=1 TO 5 DO
+	FOR i:=1 TO gvl.MAX_TRACK DO
 		FbEnableTrack[i](
 		xpTrack:= XpTrack[i], 
 		xpGroup:= XpGroup,
@@ -366,13 +354,19 @@ END_IF]]></ST>
 		nMainState := 90;
 	END_IF
 	
-	90:
+	90:// JoinOrderの配列に仮の数字を入れる
 	FOR i:=1 TO GVL.MAX_MOVER DO
 		JoinOrder[i] := i;
 	END_FOR
+
 	nMainState:= 100;
 	
-	100://判定 数字の若い順にする	
+	100://JoinOrderにx座標の若い順にMover番号を格納する	
+	IF GVL.MAX_MOVER < 2 THEN
+		nMainState := 200;
+		RETURN;
+	END_IF
+	
 	FOR i:=1 TO GVL.MAX_MOVER-1 DO
 		FOR n:=GVL.MAX_MOVER TO (i+1) BY -1 DO
 			IF JoinOrder[n] >0 AND JoinOrder[n-1] >0 THEN
@@ -384,11 +378,11 @@ END_IF]]></ST>
 			END_IF
 		END_FOR
 	END_FOR
-	nIndex := 1;
-	nSubState :=0;
+	//nIndex := 1;
+	//nSubState :=0;
 	nMainState := 200;
 	
-	200:
+	200://X座標の若いMoverから、Joinと移動を実行する
 		CASE nSubState OF
 			0: //Join
 			fbMoverSeq[JoinOrder[nIndex]].TargetNo := 1;
@@ -408,14 +402,12 @@ END_IF]]></ST>
 		
 			nSubState := 21;
 			
-			21://CA Check
-	
+			21://衝突回避による停止中か確認（正常に動いていない。2周目以降だんまり停止発生中）
 				IF XpMover[JoinOrder[nIndex]].MCTOPLC.SETONTRACK.SetVelo < fZeroVelo THEN
 					timerCA(IN := TRUE, PT := T#1S);
 				ELSE
 					timerCA(IN := FALSE); 
 				END_IF
-			
 			IF timerCA.Q THEN
 				fbMoverSeq[JoinOrder[nIndex]].bNextStep := TRUE;
 			END_IF
@@ -424,7 +416,7 @@ END_IF]]></ST>
 				nSubState := 30;
 			END_IF
 
-			30://GO to New Cycle
+			30://次のサイクルへ
 			IF bDoneMover[JoinOrder[nIndex]] THEN
 				eTaskMover[JoinOrder[nIndex]] := E_MoverTask.IDLE;
 				IF nIndex < gvl.MAX_MOVER THEN
@@ -436,7 +428,7 @@ END_IF]]></ST>
 			END_IF
 		END_CASE
 	
-	300:
+	300://完了
 	bJoinDone	:= TRUE;
 	
 	999:
@@ -448,123 +440,6 @@ END_IF]]></ST>
 	
 END_CASE
 ]]></ST>
-      </Implementation>
-    </Action>
-    <Action Name="JoinTrack_1" Id="{581ebbb4-1abf-43c9-994f-5073c5ae3854}">
-      <Implementation>
-        <ST><![CDATA[(*
-CASE nMainState OF
-	0://各moverのx座標をもとにTrack2か3に入れる
-	IF bmoverEnable[1] AND bMoverEnable[2] AND exeStart THEN
-		exeStart :=FALSE;
-		
-		IF XpMover[1].MCTOPLC.ACT.ActPos.x > XpMover[2].MCTOPLC.ACT.ActPos.x THEN
-			iPriMover := 1; iSecMover :=2;
-		ELSE
-			iPriMover := 2; iSecMover :=1;
-		END_IF
-		nMainState := 2;
- 	END_IF
-	
-	2:
-	fTrackCenterLength[2] := XpTrack[2].GetLength()/2;
-	fTrackCenterLength[3] := XpTrack[3].GetLength()/2;
-	
-	XpTrack[2].GetPositionAt(arcLength:=fTrackCenterLength[2], position:=stTargetPos[2]);
-	XpTrack[3].GetPositionAt(arcLength:=fTrackCenterLength[3], position:=stTargetPos[3]);
-	
-	XpMover[iPriMover].MoveToPosition(commandFeedback:=XpFeedback[iPriMover][5] ,
-				targetPosition:= stTargetPos[2],//Track2
-				constraint:= Constraint[iPriMover],
-				options:= 0);
-	nMainState := 3;
-	
-	3:
-	IF XpFeedback[iPriMover][5].Done THEN
-		nMainState :=4;
-	END_IF
-
-	4:			
-	XpMover[iSecMover].MoveToPosition(commandFeedback:=XpFeedback[iSecMover][5] ,
-				targetPosition:= stTargetPos[3],//Track3
-				constraint:= Constraint[iSecMover],
-				options:= 0	);
-	nMainState :=5;
-	
-	5:
-	IF XpFeedback[iSecMover][5].Done THEN
-		nMainState :=6;
-	END_IF
-	
-	6:
-	eTaskMover[iPriMover] := E_MoverTask.JOIN_T2;
-	nMainState := 7;
-	
-	7:
-	eTaskMover[iPriMover] := E_MoverTask.IDLE;
-	nMainState := 8;
-	
-	8:
-	IF fbMoverSeq[iPriMover].bDoneMover THEN
-		nMainState := 9;
-	END_IF
-	
-	9:
-	eTaskMover[iSecMover] := E_MoverTask.JOIN_T3;
-	nMainState := 10;
-	
-	10:
-		eTaskMover[iSecMover] := E_MoverTask.IDLE;
-		nMainState :=20;
-	
-	20:
-	IF bDoneMover[iSecMover] THEN
-		nMainState := 30;
-	END_IF
-	
-	30://Track3に入ったmoverからTrack1へ移動する
-	IF iPriMover =1 THEN
-		eTaskMover[2] := E_MoverTask.MOVE_END_T1;
-	ELSE
-		eTaskMover[1] := E_MoverTask.MOVE_END_T1;
-	END_IF
-	
-	nMainState := 40;
-	
-	40://確認後IDLEにする
-	IF bDoneMover[1] OR bDoneMover[2] AND NOT exeStop THEN
-		eTaskMover[1] := E_MoverTask.IDLE;
-		eTaskMover[2] := E_MoverTask.IDLE;
-		nMainState := 50;
-	END_IF
-	
-	50://Track2のmoverをTrack1の途中まで移動させる
-	IF iPriMover = 1 THEN
-		eTaskMover[1] := E_MoverTask.MOVE_BEHIND_T1;
-	ELSE
-		eTaskMover[2] := E_MoverTask.MOVE_BEHIND_T1;
-	END_IF
-	nMainState := 60;
-	
-	60://確認後IDLEにする
-	IF bDoneMover[1] OR bDoneMover[2] AND NOT exeStop THEN
-		eTaskMover[1] := E_MoverTask.IDLE;
-		eTaskMover[2] := E_MoverTask.IDLE;
-		nMainState := 70;
-	END_IF
-	
-	70:
-	bJoinDone	:= TRUE;
-	
-	999:
-	IF bDoneMover[1] AND bDoneMover[2] THEN
-		eTaskMover[1] :=E_MoverTask.IDLE;
-		eTaskMover[2] :=E_MoverTask.IDLE;
-		nMainState := 0;
-	END_IF
-	
-END_CASE
-*)]]></ST>
       </Implementation>
     </Action>
     <Action Name="ManualMove" Id="{c3baa2a6-57e4-4564-a85d-05e83398f935}">
@@ -725,9 +600,11 @@ FOR i := 1 TO GVL.MAX_TRACK DO
 END_FOR
 
 FOR i := 0 TO 30 DO
-	XpFeedback[1][i].Update();
-	XpFeedback[2][i].Update();
-	XpFeedback[3][i].Update();
+	FOR n := 1 TO gvl.MAX_MOVER DO
+		XpFeedback[n][i].Update();
+	END_FOR
+	//XpFeedback[2][i].Update();
+	//XpFeedback[3][i].Update();
 	ManualFeedback[i].Update();
 END_FOR
 
@@ -738,11 +615,30 @@ END_FOR]]></ST>
     </Action>
     <Action Name="VisualizationVariable" Id="{3df423ee-d96e-4eec-a178-ace4b3e5fdc9}">
       <Implementation>
-        <ST><![CDATA[FOR i:=1 TO 2 DO
+        <ST><![CDATA[//初期値TRUE
+bAllEnabled := TRUE;
+bAllDisabled := TRUE;
+
+FOR i:=1 TO gvl.MAX_MOVER DO
+	//手動単体enable
 	bMoverEnable[i]:=(XpMover[i].MCTOPLC.STD.State = MC.MC_PLANAR_STATE.Enabled);
+	//手動単体Disable
 	bMoverDisable[i]:=(XpMover[i].MCTOPLC.STD.State = MC.MC_PLANAR_STATE.Disabled);
+
+	IF NOT (XpMover[i].MCTOPLC.STD.State = MC.MC_PLANAR_STATE.Enabled) THEN
+		bAllEnabled := FALSE;//一つでもEnableしていないMoverがいたらFALSE
+	END_IF
+	
+	IF NOT (XpMover[i].MCTOPLC.STD.State = MC.MC_PLANAR_STATE.Disabled) THEN
+		bAllDisabled := FALSE;//一つでもDisableしていないMoverがいたらFALSE
+	END_IF
 END_FOR
 
+//上段での結果を格納
+bMoverEnable[0]  := bAllEnabled;
+bMoverDisable[0] := bAllDisabled;
+
+(*
 IF 	(XpMover[1].MCTOPLC.STD.State = MC.MC_PLANAR_STATE.Enabled) AND
 	(XpMover[2].MCTOPLC.STD.State = MC.MC_PLANAR_STATE.Enabled) THEN
 	bMoverEnable[0] :=TRUE;
@@ -753,8 +649,10 @@ IF 	(XpMover[1].MCTOPLC.STD.State = MC.MC_PLANAR_STATE.Disabled) AND
 	bMoverEnable[0] :=FALSE;
 	bMoverDisable[0] :=TRUE;
 END_IF
+*)
 
-FOR i:=1 TO 2 DO
+//VISUs表示用座標格納変数
+FOR i:=1 TO gvl.MAX_MOVER DO
 	VisVar[i][0] :=XpMover[i].MCTOPLC.ACT.ActPos.x;
 	VisVar[i][1] :=XpMover[i].MCTOPLC.ACT.ActPos.y;
 	VisVar[i][2] :=XpMover[i].MCTOPLC.ACT.ActPos.c;
