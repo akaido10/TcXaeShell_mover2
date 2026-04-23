@@ -54,6 +54,7 @@ VAR
 	MoverTrack1				: FB_XpMoveTrack;
 	fbMoverSeq 				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoverState; //作業者FB
 	fbMoverInit				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoverInit;
+	fbMoverPara				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoverPara;
 	
 	//外部PLCとのIO
 	EipIntInput 	AT %I*	:ARRAY[0..32] OF INT;
@@ -150,6 +151,7 @@ VAR
 	bBeforeLink				: BOOL;
 	EnableIdx				: INT;
 	ActiveIdx				: INT:=1;
+	fReleaseThreshold		: LREAL := 200;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[update();
@@ -167,6 +169,7 @@ IF exeRestart THEN
 	exeRestart := FALSE;
 	
 	nMainState := 0;
+	nSubState := 0;
 	nMoverState[1] := 0;
 	nMoverState[2] := 0;
 	eTaskMover[1] :=E_MoverTask.IDLE;
@@ -198,7 +201,6 @@ FOR i := 1 TO gvl.MAX_MOVER DO
 		eTaskMover := etaskMover[i],
 		refMover :=XpMover[i],
 		refTrack :=XpTrack,
-		bDoneMover => bDoneMover[i],
 		reftrail :=XpTrackTrail[3]
 		);
 END_FOR]]></ST>
@@ -385,23 +387,24 @@ END_IF]]></ST>
 	200://X座標の若いMoverから、Joinと移動を実行する
 		CASE nSubState OF
 			0: //Join
-			fbMoverSeq[JoinOrder[nIndex]].TargetNo := 1;
-			eTaskMover[JoinOrder[nIndex]] := E_MoverTask.JOIN;
+			fbMoverSeq[JoinOrder[nIndex]].TargetNo := 3;
+			fbMoverSeq[JoinOrder[nIndex]].eTaskMover := E_MoverTask.JOIN;
 			nSubState := 10;
 			
 			10: //Idle
 			IF bDoneMover[JoinOrder[nIndex]] THEN
-					eTaskMover[JoinOrder[nIndex]] := E_MoverTask.IDLE;
+					fbMoverSeq[JoinOrder[nIndex]].eTaskMover := E_MoverTask.IDLE;
 					nSubState := 20;
 			END_IF			
 
 			20://Move To T1
 			fbMoverSeq[JoinOrder[nIndex]].TargetNo := 1;
-			eTaskMover[JoinOrder[nIndex]] := E_moverTask.MOVE_TRACK;
+			fbMoverSeq[JoinOrder[nIndex]].eTaskMover := E_moverTask.MOVE_TRACK;
 			fbMoverSeq[JoinOrder[nIndex]].bNextStep := FALSE;
 		
 			nSubState := 21;
 			
+			(*
 			21://衝突回避による停止中か確認（正常に動いていない。2周目以降だんまり停止発生中）
 				IF XpMover[JoinOrder[nIndex]].MCTOPLC.SETONTRACK.SetVelo < fZeroVelo THEN
 					timerCA(IN := TRUE, PT := T#1S);
@@ -415,17 +418,38 @@ END_IF]]></ST>
 			IF fbMoverSeq[JoinOrder[nIndex]].bDoneMover THEN				
 				nSubState := 30;
 			END_IF
+			*)
+			
+			21:
+			IF bDoneMover[JoinOrder[nIndex]] THEN
+				nSubState := 30;
+			END_IF
+			
+			25:
+			IF (XpMover[JoinOrder[nIndex]].MCTOPLC.SET.SetPos.x < fReleaseThreshold) 
+				AND (XpMover[JoinOrder[nIndex]].MCTOPLC.SET.SetPos.y < fReleaseThreshold)THEN //Moverが左側タイルに行ったら
+				nSubState := 30;
+			END_IF
+			
+			IF XpMover[JoinOrder[nIndex]].MCTOPLC.SETONTRACK.SetVelo < fZeroVelo THEN
+				timerCA(IN := TRUE, PT := T#1S);
+			ELSE
+				timerCA(IN := FALSE); 
+			END_IF
+			IF timerCA.Q THEN
+				nSubState := 30;
+			END_IF
+			
 
 			30://次のサイクルへ
-			IF bDoneMover[JoinOrder[nIndex]] THEN
-				eTaskMover[JoinOrder[nIndex]] := E_MoverTask.IDLE;
+				fbMoverSeq[JoinOrder[nIndex]].eTaskMover := E_MoverTask.IDLE;
 				IF nIndex < gvl.MAX_MOVER THEN
 					nIndex := nIndex + 1;
 					nSubState := 0;
 				ELSE
 					nMainState :=300;
 				END_IF
-			END_IF
+
 		END_CASE
 	
 	300://完了
@@ -433,8 +457,8 @@ END_IF]]></ST>
 	
 	999:
 	IF bDoneMover[1] AND bDoneMover[2] THEN
-		eTaskMover[1] :=E_MoverTask.IDLE;
-		eTaskMover[2] :=E_MoverTask.IDLE;
+		fbMoverSeq[1].eTaskMover :=E_MoverTask.IDLE;
+		fbMoverSeq[2].eTaskMover :=E_MoverTask.IDLE;
 		nMainState := 0;
 	END_IF
 	
@@ -475,7 +499,16 @@ END_FOR]]></ST>
     <Action Name="Parallel" Id="{2e4eeff1-d791-4a2e-a438-2332e86160e9}">
       <Implementation>
         <ST><![CDATA[FOR i:=1 TO gvl.MAX_MOVER DO
-	CASE nGearingState[i] OF
+	fbMoverPara[i](
+	bBeforeLink:=bBeforeLink , 
+	bT2Busy:= bT2Busy, 
+	fbMoverSeq:= fbMoverSeq[i], 
+	bJoinDone:= bJoinDone, 
+	bT2Available:= (XpTrack[2].MCTOPLC_STD.MovingMoverCount = 0), 
+	bT3Available:= (XpTrack[3].MCTOPLC_STD.MovingMoverCount = 0), 
+	exestop:= exestop);
+END_FOR
+(*	CASE nGearingState[i] OF
 		0:
 		IF bJoinDone THEN
 			nGearingState[i] :=50;
@@ -534,19 +567,7 @@ END_FOR]]></ST>
 			bT2Busy := FALSE;
 			nGearingState[i] :=300;
 		END_IF
-		 (*
-		122:
-		IF NOT exeStop THEN
-			eTaskMover[i] := E_MoverTask.MOVE_C_ROTATE;
-			nGearingState[i] := 123;
-		END_IF
-		
-		123:
-		IF bDoneMover[i] THEN
-			eTaskMover[i] := E_MoverTask.IDLE;
-			nGearingState[i] := 200;
-		END_IF
-		*)
+
 		130:
 		IF NOT exeStop THEN
 			fbMoverSeq[i].TargetNo := 3;
@@ -560,22 +581,7 @@ END_FOR]]></ST>
 			bBeforeLink := FALSE;
 			nGearingState[i]:= 300;
 		END_IF
-		(*
-		132:
-		IF NOT exeStop THEN
-			eTaskMover[i] := E_MoverTask.MOVE_C_ROTATE;
-			nGearingState[i] := 133;
-		END_IF
-		
-		133:
-		IF bDoneMover[i] THEN
-			eTaskMover[i] := E_MoverTask.IDLE;
-			nGearingState[i] := 200;
-		END_IF
-*)
-		200:
-		
-		
+
 		300:
 		IF NOT exeStop THEN
 			nGearingState[i] := 50;
@@ -583,7 +589,7 @@ END_FOR]]></ST>
 		
 	END_CASE
 END_FOR
-]]></ST>
+*)]]></ST>
       </Implementation>
     </Action>
     <Action Name="Update" Id="{b564147a-f79d-4898-a402-a4436ddab2c5}">

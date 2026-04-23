@@ -53,6 +53,7 @@ IF bRestartMover THEN
 	bRestartMover := FALSE;
 	nMoverState := 0;
 	eTaskMover := E_MoverTask.IDLE;
+	bNextStep := FALSE;
 	RETURN;
 END_IF
 
@@ -60,6 +61,7 @@ IF bResetMover THEN
 	bResetMover := FALSE;
 	nMoverState := 950;
 	eTaskMover := E_MoverTask.RESET_ERROR;
+	bNextStep := FALSE;
 END_IF
 
 CASE nMoverState OF
@@ -69,7 +71,7 @@ CASE nMoverState OF
 	END_IF
 	
 		CASE eTaskMover OF
-			E_MoverTask.JOIN				: nMOverState :=100;
+			E_MoverTask.JOIN				: nMoverState :=100;
 			E_MoverTask.MOVE_TRACK			: nMoverState :=200;
 			E_MoverTask.MOVE_C_ROTATE		: nMoverState :=300;
 			E_MoverTask.RESET_ROTATE		: nMoverState :=900;
