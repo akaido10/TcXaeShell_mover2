@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_StationT1" Id="{ce1d8752-903b-4abe-8510-95224edda60b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_StationT1
+VAR_IN_OUT
+	XpMover			: MC_PlanarMover;
+	XpTrack			: ARRAY[*] OF MC_PlanarTrack;
+END_VAR
+VAR_INPUT
+	execute			: BOOL;
+	bT2Ready		: BOOL;
+	bT3Ready		: BOOL;
+END_VAR
+VAR_OUTPUT
+	bOccupied		: BOOL;
+	bReady			: BOOL;
+END_VAR
+VAR
+	nState			: INT;
+	fbMoveTrack		: FB_XpMoveTrack;
+	nTargetTrack	: INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE nState OF
+	0://init
+	IF execute THEN
+		bOccupied := TRUE;//Stationの状態をOccupiedにする
+		bReady := FALSE;
+		nState := 10;
+	END_IF
+	
+	10://判断
+	IF bT2Ready THEN
+		nTargetTrack := 5;//右ルート
+		nState := 20;
+	ELSIF bT3Ready THEN
+		nTargetTrack := 4;//左ルート
+		nState := 20;
+	END_IF
+	
+	20://移動
+	fbMoveTrack(
+	XpMover:= XpMover, 
+	XpTrack:= XpTrack[nTargetTrack],
+	execute:= TRUE);
+	
+	IF fbMoveTrack.done THEN
+		fbMoveTrack.execute := FALSE;
+		bOccupied := FALSE;
+		bReady := TRUE;
+		nState := 30;
+	END_IF
+	
+	30://initへ戻る
+		nState := 0;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

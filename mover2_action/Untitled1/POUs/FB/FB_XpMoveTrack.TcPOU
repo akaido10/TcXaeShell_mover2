@@ -72,7 +72,8 @@ CASE _sequence OF
 		_XpOptionMoveOnTrack.gapMode := _gapmode;
 		XpMover.MoveOnTrack(commandFeedback:= _XpFeedback[0], 
 			targetTrack:= XpTrack, 
-			targetPositionOnTrack:= _distance, 
+			//targetPositionOnTrack:= _distance, 
+			targetPositionOnTrack:= XpTrack.GetLength(), 
 			constraint:= _XpCondition, 
 			options:= _XpOptionMoveOnTrack);
 		_sequence := _CHECK_MOVE_ON_TRACK;

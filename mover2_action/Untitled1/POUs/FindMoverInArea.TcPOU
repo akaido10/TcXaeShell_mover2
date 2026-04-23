@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FindMoverInArea" Id="{e13a7c28-4d2f-4460-8897-be0c808ac53b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION FindMoverInArea : INT
+VAR_INPUT
+	stParam		: ST_StationParams;
+END_VAR
+VAR_IN_OUT
+	XpMover		: ARRAY[*] OF MC_PlanarMover;
+END_VAR
+VAR
+	i 			: DINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//初期値0
+FindMoverInArea := 0;
+
+//各Moverが指定範囲にいるかサーチする
+FOR i:=LOWER_BOUND(XpMover, 1) TO UPPER_BOUND(XpMover ,1) DO
+	IF 
+	XpMover[i].MCTOPLC.SET.SetPos.x >= stParam.fMinX AND
+	XpMover[i].MCTOPLC.SET.SetPos.x <= stParam.fMaxX AND
+	XpMover[i].MCTOPLC.SET.SetPos.y >= stParam.fMinY AND
+	XpMover[i].MCTOPLC.SET.SetPos.y <= stParam.fMaxY THEN
+	//指定範囲にいるMoverの番号を取得
+		FindMoverInArea := DINT_TO_INT(i);
+		RETURN;
+	END_IF
+END_FOR]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

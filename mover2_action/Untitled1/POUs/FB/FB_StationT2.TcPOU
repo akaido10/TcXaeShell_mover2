@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_StationT2" Id="{e2265522-30f6-430e-aa61-2d3bf796ce24}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_StationT2
+VAR_IN_OUT
+	XpMover			: MC_PlanarMover;
+	XpTrack			: ARRAY [*] OF MC_PlanarTrack;
+END_VAR
+VAR_INPUT
+	execute			: BOOL;
+	bT3Occupied		: BOOL;
+	bT3BeforeRotate	: BOOL;
+END_VAR
+VAR_OUTPUT
+	bOccupied		: BOOL;
+	bReady			: BOOL;
+END_VAR
+VAR
+	nState			: INT;
+	fbMoveTrack		: FB_XpMoveTrack;
+	fbMoveC			: FB_XpMoveC;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE nState OF
+	0: //init
+	IF execute THEN
+		bOccupied := TRUE;//Stationの状態をOccupiedにする
+		bReady := FALSE;
+		nState := 10;
+	END_IF
+	
+	10://T3のMover待ち
+	IF bT3Occupied THEN
+		nState := 20;
+	END_IF
+	
+	
+	20://移動
+	fbMoveTrack(
+	XpMover:= XpMover, 
+	XpTrack:= XpTrack[7],
+	execute:= TRUE);
+	
+	IF fbMoveTrack.done THEN
+		fbMoveTrack.execute:= FALSE;
+		bOccupied := FALSE;
+		bReady := TRUE;//Stationの状態をREADYにする
+		nState := 30;
+	END_IF
+	
+	30://回転
+	IF bT3BeforeRotate THEN //T3のMoverが到着したら
+		fbMoveC(
+		XpMover:= XpMover, 
+		execute:= TRUE, 
+		position:= XpMover.MCTOPLC.SET.SetPos.c + 360);
+		
+		IF fbMoveC.done THEN
+			fbMoveC.execute := FALSE;
+			nState := 40;
+		END_IF
+	END_IF
+	
+	40:	//T1へ移動
+	fbMoveTrack(
+		XpMover:= XpMover, 
+		XpTrack:= XpTrack[1],
+		execute:= TRUE);
+		nState := 100;
+	
+	100://initへ
+	fbMoveTrack.execute := FALSE;//移動指令を落とす
+	nState := 0;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

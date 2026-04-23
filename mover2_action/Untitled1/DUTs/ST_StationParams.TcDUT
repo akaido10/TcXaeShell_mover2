@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_StationParams" Id="{385c7f81-cc01-4a04-b8c8-6b7de3aa0cb8}">
+    <Declaration><![CDATA[TYPE ST_StationParams :
+STRUCT
+	fMinX		: LREAL;
+	fMaxX		: LREAL;
+	fMinY		: LREAL;
+	fMaxY		: LREAL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

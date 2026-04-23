@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_StationT4" Id="{3386951d-f41a-46a4-8131-caca210d14f4}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_StationT4
+VAR_IN_OUT
+	XpMover			: MC_PlanarMover;
+	XpTrack			: ARRAY[*] OF MC_PlanarTrack;
+END_VAR
+VAR_INPUT
+	execute			: BOOL;
+END_VAR
+VAR_OUTPUT
+	bOccupied		: BOOL;
+	bReady			: BOOL;
+END_VAR
+VAR
+	nState			: INT;
+	fbMoveTrack		: FB_XpMoveTrack;
+	nTargetTrack	: INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE nState OF
+	0://init
+	IF execute THEN
+		bOccupied := TRUE;//Stationの状態をOccupiedにする
+		bReady := FALSE;
+		nState := 10;
+	END_IF
+	
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

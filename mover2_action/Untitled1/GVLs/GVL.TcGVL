@@ -4,8 +4,23 @@
     <Declaration><![CDATA[{attribute 'qualified_only'}
 VAR_GLOBAL CONSTANT
 	MAX_MOVER 	: INT:=2;
-	MAX_TRACK	: INT:=7;
+	MAX_TRACK	: INT:=8;
 END_VAR
-]]></Declaration>
+
+VAR_GLOBAL
+	//Station座標
+stArea_T1 : ST_StationParams :=(
+			fMinX:= 220, fMaxX:= 260,
+			fMinY:= 70, fMaxY:= 90);//初期位置・分岐地点
+stArea_T2 : ST_StationParams :=(
+			fMinX:= 580, fMaxX:= 620,
+			fMinY:= 90, fMaxY:= 110);//右ルート
+stArea_T3 : ST_StationParams :=(
+			fMinX:= 340, fMaxX:= 380,
+			fMinY:= 90, fMaxY:= 110);//左ルート
+stArea_T4 : ST_StationParams :=(
+			fMinX:= 220, fMaxX:= 260,
+			fMinY:= 380, fMaxY:= 420);//合流地点
+END_VAR]]></Declaration>
   </GVL>
 </TcPlcObject>

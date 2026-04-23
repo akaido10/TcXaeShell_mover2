@@ -152,6 +152,13 @@ VAR
 	EnableIdx				: INT;
 	ActiveIdx				: INT:=1;
 	fReleaseThreshold		: LREAL := 200;
+	
+	//Station
+	nTargetIdx				: ARRAY[1..4] OF INT;
+	fbStationT1				: FB_StationT1;
+	fbStationT2				: FB_StationT2;
+	fbStationT3				: FB_StationT3;
+	fbStationT4				: FB_StationT4;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[update();
@@ -590,6 +597,55 @@ END_FOR
 	END_CASE
 END_FOR
 *)]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="StationSys" Id="{30dec80f-a827-4908-9676-47cf59b74f83}">
+      <Implementation>
+        <ST><![CDATA[nTargetIdx[3] := FindMoverInArea(stParam := gvl.stArea_T3,//左ルート
+		 XpMover := XpMover);
+		 
+IF nTargetIdx[3] <> 0 THEN
+	fbStationT3(XpMover := XpMover[nTargetIdx[3]],
+				XpTrack := XpTrack,
+				execute := TRUE);
+END_IF
+
+nTargetIdx[2] := FindMoverInArea(stParam := gvl.stArea_T2,//右ルート
+		 XpMover := XpMover);
+		 
+IF nTargetIdx[2] <> 0 THEN
+	fbStationT2(XpMover := XpMover[nTargetIdx[2]],
+				XpTrack := XpTrack,
+				bT3BeforeRotate := fbStationT3.bBeforeRotate,
+				bT3Occupied := fbStationT3.bOccupied,
+				execute := TRUE);
+END_IF
+
+
+//Track1にどのMoverがいる？(Mover番号の取得)
+nTargetIdx[1] := FindMoverInArea(stParam := gvl.stArea_T1,
+		 XpMover := XpMover);
+
+//Track1の動作命令	 
+IF nTargetIdx[1] > 0 THEN
+	fbStationT1(XpMover := XpMover[nTargetIdx[1]],
+				XpTrack := XpTrack,
+				execute := TRUE,
+				bT2Ready := fbStationT2.bReady,
+				bT3Ready := fbStationT3.bReady);
+ELSE
+	fbStationT1.execute := FALSE;
+END_IF
+
+nTargetIdx[4] := FindMoverInArea(stParam := gvl.stArea_T4,
+		 XpMover := XpMover);
+		 
+IF nTargetIdx[4] <> 0 THEN
+	fbStationT4(XpMover := XpMover[nTargetIdx[4]],
+				XpTrack := XpTrack,
+				execute := TRUE);
+END_IF
+]]></ST>
       </Implementation>
     </Action>
     <Action Name="Update" Id="{b564147a-f79d-4898-a402-a4436ddab2c5}">
