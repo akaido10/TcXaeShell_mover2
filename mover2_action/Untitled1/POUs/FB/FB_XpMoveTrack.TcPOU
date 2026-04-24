@@ -12,7 +12,7 @@ VAR_INPUT
 	velocity						: LREAL := 100;
 	acceleration					: LREAL := 2000;
 	jerk							: LREAL := 20000;
-	gap								: LREAL := 300;
+	gap								: LREAL := 170;
 	gapmode							: MC_GAP_MODE_ON_TRACK := MC_GAP_MODE_ON_TRACK.Standard1D;
 END_VAR
 VAR_OUTPUT

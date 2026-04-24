@@ -29,7 +29,6 @@ VAR
 	exeStart				: BOOL;
 	exeStartPB				: BOOL;
 	exeStop					: BOOL;
-	exeLock					: BOOL;
 	exeMoveCycle			: BOOL;
 	exereset				: BOOL;
 	exeresetPB				: BOOL;
@@ -41,7 +40,11 @@ VAR
 	exeMoveC				: BOOL;
 	exeinput				: ARRAY [1..4] OF BOOL;
 	exeResetTrack			: BOOL;
-
+	exePreStartPB			: BOOL;
+	exePreStart				: BOOL;
+	exeStationFB			: ARRAY [1..GVL.MAX_STATION] OF BOOL;
+	exeJoin					: BOOL;
+	exeInitMove				: BOOL;
 
 	fbEnableMover			: ARRAY[1..GVL.MAX_MOVER] OF FB_XpEnableMover;
 	FbDisableMover 			: ARRAY[1..GVL.MAX_MOVER] OF FB_XpDisableMover;
@@ -50,12 +53,11 @@ VAR
 	FbEnableTrack			: ARRAY[1..GVL.MAX_TRACK] OF FB_XpEnableTrack;
 	Movercount 				: ARRAY [1..GVL.MAX_MOVER] OF FB_McPlanarTrack; //Track上のMover数
 	fbAutoScan				: FB_XPlanarAutoScan; //初期化シーケンス実行
-	JoinTrack1				: FB_XpJoinTrack;
-	MoverTrack1				: FB_XpMoveTrack;
 	fbMoverSeq 				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoverState; //作業者FB
 	fbMoverInit				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoverInit;
 	fbMoverPara				: ARRAY[1..GVL.MAX_MOVER] OF FB_XpMoverPara;
-	
+	fbJoinTrack				: FB_XpJoinTrack;
+	fbMoveTrack				: FB_XpMoveTrack;
 	//外部PLCとのIO
 	EipIntInput 	AT %I*	:ARRAY[0..32] OF INT;
 	EipIntOutput	AT %Q* 	:ARRAY[0..32] OF INT;
@@ -151,7 +153,8 @@ VAR
 	bBeforeLink				: BOOL;
 	EnableIdx				: INT;
 	ActiveIdx				: INT:=1;
-	fReleaseThreshold		: LREAL := 200;
+	fReleaseThresholdX		: LREAL := 310;
+	fReleaseThresholdY		: LREAL := 150;
 	
 	//Station
 	nTargetIdx				: ARRAY[1..4] OF INT;
@@ -159,6 +162,9 @@ VAR
 	fbStationT2				: FB_StationT2;
 	fbStationT3				: FB_StationT3;
 	fbStationT4				: FB_StationT4;
+	eJoinTrackNo			: E_TrackName;
+	nStationSeq				: INT;
+	exeStatio: BOOL;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[update();
@@ -167,7 +173,8 @@ initial2();
 ManualMove();
 VisualizationVariable();
 JoinTrack();
-Parallel();
+//Parallel();
+StationSys();
 
 EIPIntOutput[0] := intvalue[1];
 intvalue[2] := EipIntInput[0];
@@ -202,7 +209,7 @@ IF exeReset THEN
 END_IF
 
 TON1(IN :=bTimerStart, PT :=T#3S);
-
+(*
 FOR i := 1 TO gvl.MAX_MOVER DO
 	fbMoverSeq[i](stParams := stMainParams,
 		eTaskMover := etaskMover[i],
@@ -210,7 +217,8 @@ FOR i := 1 TO gvl.MAX_MOVER DO
 		refTrack :=XpTrack,
 		reftrail :=XpTrackTrail[3]
 		);
-END_FOR]]></ST>
+END_FOR
+*)]]></ST>
     </Implementation>
     <Action Name="Condition" Id="{f6e6baf7-adea-40b3-a444-17ee6bd7da1e}">
       <Implementation>
@@ -359,6 +367,119 @@ END_IF]]></ST>
       <Implementation>
         <ST><![CDATA[CASE nMainState OF
 	0:
+	IF bAllMoverEnable AND exePreStart THEN
+		bJoinDone := FALSE;
+		exeJoin := FALSE;
+		exeInitMove := FALSE;
+		nMainState := 90;
+	END_IF
+	
+	90:// JoinOrderの配列に仮の数字を入れる
+	FOR i:=1 TO GVL.MAX_MOVER DO
+		JoinOrder[i] := i;
+	END_FOR
+
+	nMainState:= 100;
+	
+	100://JoinOrderにx座標の若い順にMover番号を格納する	
+	IF GVL.MAX_MOVER < 2 THEN
+		nMainState := 200;
+		RETURN;
+	END_IF
+	
+	FOR i:=1 TO GVL.MAX_MOVER-1 DO
+		FOR n:=GVL.MAX_MOVER TO (i+1) BY -1 DO
+			IF JoinOrder[n] >0 AND JoinOrder[n-1] >0 THEN
+				IF XpMover[JoinOrder[n]].MCTOPLC.SET.SetPos.x < XpMover[JoinOrder[n-1]].MCTOPLC.SET.SetPos.x THEN
+				tempID			:= JoinOrder[n];
+				JoinOrder[n] 	:= JoinOrder[n-1];
+				JoinOrder[n-1] 	:= tempID;
+				END_IF
+			END_IF
+		END_FOR
+	END_FOR
+	//nIndex := 1;
+	//nSubState :=0;
+	nMainState := 200;
+	
+	200://X座標の若いMoverから、Joinと移動を実行する
+	CASE nSubState OF
+		0: //Join
+		exeJoin := TRUE;
+		nSubState:= 10;
+		
+		10:
+		IF fbJoinTrack.done THEN
+			exejoin := FALSE;
+			nSubState := 20;
+		END_IF			
+
+		20://Move To T1
+		exeInitMove := TRUE;
+		nSubState := 30;
+		
+		30: //Idle
+		IF (XpMover[JoinOrder[nIndex]].MCTOPLC.SET.SetPos.x < fReleaseThresholdX)
+			//AND (XpMover[JoinOrder[nIndex]].MCTOPLC.SET.SetPos.y < fReleaseThresholdY)
+			AND (XpMover[JoinOrder[nIndex]].MCTOPLC.SETONTRACK.SetVelo < fZeroVelo) THEN
+			bTimerStart:=TRUE;
+		END_IF
+		IF fbMoveTrack.done THEN
+			exeInitMove := FALSE;
+			nSubstate := 40;
+		ELSIF TON1.Q THEN
+			bTimerStart:=FALSE;
+			XpMover[JoinOrder[nIndex]].Halt(commandFeedback:= XpFeedback[nIndex][0], constraint:= Constraint[1]);
+			exeInitMove := FALSE;
+			nSubState := 40;
+		END_IF
+			
+		40:
+		IF nIndex < gvl.MAX_MOVER THEN
+			nIndex := nIndex + 1;
+			nSubState := 0;
+		ELSE
+			nMainState :=300;
+		END_IF
+	END_CASE
+	
+	IF 		nIndex = 1 THEN 
+		eJoinTrackNo := E_TrackName.T1_1_ToRotate;//X=120,Y=240
+	ELSIF 	nIndex = 2 THEN 
+		eJoinTrackNo := E_TrackName.T3_2_ToRotate;//X=360,Y=240
+	ELSE 
+		eJoinTrackNo := E_TrackName.T2_2_ToRotate;//X=600,Y=240
+	END_IF
+
+	
+	300://完了
+	bJoinDone	:= TRUE;
+	
+	999:
+	exeJoin		:=FALSE;
+	exeInitMove	:=FALSE;
+	nMainState 	:=0;
+END_CASE
+
+
+fbJoinTrack(XpMover:= XpMover[JoinOrder[nIndex]], 
+			XpTrack:= XpTrack[EJoinTrackNo],
+			execute:= exeJoin,
+			velocity:= 200,
+			acceleration := 2000,
+			jerk:= 20000);
+fbMoveTrack(XpMover:= XpMover[JoinOrder[nIndex]], 
+			XpTrack:= XpTrack[E_TrackName.T1_2_ToBranch],
+			execute := exeInitMove,
+			velocity:= 200,
+			acceleration := 2000,
+			jerk:= 20000);]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="JoinTrack_1" Id="{fef5382f-de5f-4bb2-9fc7-f9686ee23894}">
+      <Implementation>
+        <ST><![CDATA[CASE nMainState OF
+	0:
 	IF bAllMoverEnable AND exeStart THEN
 		nMainState := 90;
 	END_IF
@@ -433,8 +554,8 @@ END_IF]]></ST>
 			END_IF
 			
 			25:
-			IF (XpMover[JoinOrder[nIndex]].MCTOPLC.SET.SetPos.x < fReleaseThreshold) 
-				AND (XpMover[JoinOrder[nIndex]].MCTOPLC.SET.SetPos.y < fReleaseThreshold)THEN //Moverが左側タイルに行ったら
+			IF (XpMover[JoinOrder[nIndex]].MCTOPLC.SET.SetPos.x < fReleaseThresholdx) 
+				AND (XpMover[JoinOrder[nIndex]].MCTOPLC.SET.SetPos.y < fReleaseThresholdy)THEN //Moverが左側タイルに行ったら
 				nSubState := 30;
 			END_IF
 			
@@ -601,51 +722,93 @@ END_FOR
     </Action>
     <Action Name="StationSys" Id="{30dec80f-a827-4908-9676-47cf59b74f83}">
       <Implementation>
-        <ST><![CDATA[nTargetIdx[3] := FindMoverInArea(stParam := gvl.stArea_T3,//左ルート
-		 XpMover := XpMover);
-		 
-IF nTargetIdx[3] <> 0 THEN
-	fbStationT3(XpMover := XpMover[nTargetIdx[3]],
-				XpTrack := XpTrack,
-				execute := TRUE);
-END_IF
+        <ST><![CDATA[CASE nStationSeq OF
+	0://init
+	IF exeStart AND bJoinDone THEN
+		nStationSeq :=10;
+	END_IF
 
-nTargetIdx[2] := FindMoverInArea(stParam := gvl.stArea_T2,//右ルート
-		 XpMover := XpMover);
-		 
-IF nTargetIdx[2] <> 0 THEN
-	fbStationT2(XpMover := XpMover[nTargetIdx[2]],
-				XpTrack := XpTrack,
-				bT3BeforeRotate := fbStationT3.bBeforeRotate,
-				bT3Occupied := fbStationT3.bOccupied,
-				execute := TRUE);
-END_IF
+	10://Main
+	IF exeStop THEN
+		nStationSeq := 100;
+	END_IF
+	
+	//各StationにいるMover番号を取得
+	IF NOT fbStationT1.bOccupied THEN
+	nTargetIdx[1] := FindMoverInArea(stParam := gvl.stArea_T1,
+			 XpMover := XpMover);
+	END_IF
+	nTargetIdx[2] := FindMoverInArea(stParam := gvl.stArea_T2,//右ルート
+			 XpMover := XpMover);
+	nTargetIdx[3] := FindMoverInArea(stParam := gvl.stArea_T3,//左ルート
+			 XpMover := XpMover);
+	nTargetIdx[4] := FindMoverInArea(stParam := gvl.stArea_T4,
+			 XpMover := XpMover);
 
+	//execute
+	FOR i:=1 TO gvl.MAX_STATION DO
+		IF nTargetIdx[i] <> 0 THEN
+			exeStationFB[i] := TRUE;
+		ELSE
+			exeStationFB[i] := FALSE;
+		END_IF
+	END_FOR
 
-//Track1にどのMoverがいる？(Mover番号の取得)
-nTargetIdx[1] := FindMoverInArea(stParam := gvl.stArea_T1,
-		 XpMover := XpMover);
+	//FB呼び出し
+	(*IF nTargetIdx[3] <> 0 THEN
+		exeStationFB[3] := TRUE;
+	ELSE
+		exeStationFB[3] := FALSE;
+	END_IF
 
-//Track1の動作命令	 
-IF nTargetIdx[1] > 0 THEN
-	fbStationT1(XpMover := XpMover[nTargetIdx[1]],
-				XpTrack := XpTrack,
-				execute := TRUE,
-				bT2Ready := fbStationT2.bReady,
-				bT3Ready := fbStationT3.bReady);
-ELSE
-	fbStationT1.execute := FALSE;
-END_IF
+	IF nTargetIdx[2] <> 0 THEN
+		exeStationFB[2] := TRUE;
+	ELSE
+		exeStationFB[2] := FALSE;
+	END_IF
+	
+	
+	IF nTargetIdx[1] > 0 THEN
+		exeStationFB[1] := TRUE;
+	ELSE
+		exeStationFB[1] := FALSE;
+	END_IF
+	
+			 
+	IF nTargetIdx[4] <> 0 THEN
+ 		exeStationFB[4] := TRUE;
+	ELSE
+		exeStationFB[4] := FALSE;
+	END_IF*)
 
-nTargetIdx[4] := FindMoverInArea(stParam := gvl.stArea_T4,
-		 XpMover := XpMover);
-		 
-IF nTargetIdx[4] <> 0 THEN
-	fbStationT4(XpMover := XpMover[nTargetIdx[4]],
-				XpTrack := XpTrack,
-				execute := TRUE);
-END_IF
-]]></ST>
+	
+	100://Stop
+	IF exeStart THEN
+		nStationSeq := 0;
+	END_IF
+
+END_CASE
+
+//FB呼び出し
+fbStationT3(XpMover := XpMover[nTargetIdx[3]],
+			XpTrack := XpTrack,
+			execute := exeStationFB[3]);
+			
+fbStationT2(XpMover := XpMover[nTargetIdx[2]],
+			XpTrack := XpTrack,
+			bT3BeforeRotate := fbStationT3.bBeforeRotate,
+			bT3Occupied := fbStationT3.bOccupied,
+			execute := exeStationFB[2]);	
+
+fbStationT1(XpMover := XpMover[nTargetIdx[1]],
+			XpTrack := XpTrack,
+			bT2Ready := NOT fbStationT2.bOccupied,
+			bT3Ready := NOT fbStationT3.bOccupied,
+			execute := exeStationFB[1]);	
+
+fbStationT4(XpMover := XpMover[nTargetIdx[4]],
+			XpTrack := XpTrack,
+			execute := exeStationFB[4]);	]]></ST>
       </Implementation>
     </Action>
     <Action Name="Update" Id="{b564147a-f79d-4898-a402-a4436ddab2c5}">
@@ -737,7 +900,14 @@ ELSE
 	exeXpDisableMover := FALSE;
 END_IF
 
-IF EipIntInput[6]=1 OR exestartPB THEN
+IF EipIntInput[6]=1 OR exePreStartPB THEN
+	exePreStartPB :=FALSE;
+	exePreStart := TRUE;
+ELSE
+	exePreStart := FALSE;
+END_IF
+
+IF exestartPB THEN
 	exestartPB :=FALSE;
 	exeStart := TRUE;
 ELSE

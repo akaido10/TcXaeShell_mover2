@@ -8,8 +8,8 @@ VAR_IN_OUT
 END_VAR
 VAR_INPUT
 	execute			: BOOL;
-	bT2Ready		: BOOL;
-	bT3Ready		: BOOL;
+	bT2Ready		: BOOL :=TRUE;
+	bT3Ready		: BOOL :=TRUE;
 END_VAR
 VAR_OUTPUT
 	bOccupied		: BOOL;
@@ -19,6 +19,7 @@ VAR
 	nState			: INT;
 	fbMoveTrack		: FB_XpMoveTrack;
 	nTargetTrack	: INT;
+	bMove			: BOOL;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -32,29 +33,30 @@ END_VAR
 	
 	10://判断
 	IF bT2Ready THEN
-		nTargetTrack := 5;//右ルート
+		nTargetTrack := E_TrackName.T2_1_ToLink;//右ルート
 		nState := 20;
 	ELSIF bT3Ready THEN
-		nTargetTrack := 4;//左ルート
+		nTargetTrack := E_TrackName.T3_1_ToLink;//左ルート
 		nState := 20;
 	END_IF
 	
 	20://移動
-	fbMoveTrack(
-	XpMover:= XpMover, 
-	XpTrack:= XpTrack[nTargetTrack],
-	execute:= TRUE);
-	
+	bMove := TRUE;
+	fbMoveTrack(XpMover:= XpMover, 
+				XpTrack:= XpTrack[nTargetTrack],
+				execute := TRUE);
 	IF fbMoveTrack.done THEN
 		fbMoveTrack.execute := FALSE;
 		bOccupied := FALSE;
 		bReady := TRUE;
-		nState := 30;
+		bMove := FALSE;
+		nState := 40;
 	END_IF
 	
-	30://initへ戻る
-		nState := 0;
-END_CASE]]></ST>
+	40://initへ戻る
+	nState := 0;
+END_CASE
+]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>

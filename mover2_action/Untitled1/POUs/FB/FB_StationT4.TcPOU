@@ -17,6 +17,9 @@ VAR
 	nState			: INT;
 	fbMoveTrack		: FB_XpMoveTrack;
 	nTargetTrack	: INT;
+	fbMoveC			: FB_XpMoveC;
+	bMoveC: BOOL;
+	nRotatePos		: LREAL :=0;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -28,7 +31,33 @@ END_VAR
 		nState := 10;
 	END_IF
 	
-END_CASE]]></ST>
+	10:
+	bMoveC := TRUE;
+	fbMoveC.execute := TRUE;
+	
+	IF fbMoveC.done THEN
+		fbMoveC.execute := FALSE;
+		bMoveC := FALSE;
+		nState := 420;
+	END_IF
+	
+	20://T1まで移動
+	ntargetTrack :=E_TrackName.T1_1_ToRotate;
+	fbMoveTrack.execute:= TRUE;
+		nState := 100;
+	
+	100://initへ戻る
+	fbMoveTrack.execute := FALSE;//移動指令を落とす
+	nState := 0;
+	
+END_CASE
+
+IF bMoveC THEN
+	fbMoveTrack(XpMover:= XpMover, 
+				XpTrack:= XpTrack[nTargetTrack]);
+	fbMoveC(XpMover:= XpMover, 
+			position:= nRotatePos + 360);
+END_IF]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>

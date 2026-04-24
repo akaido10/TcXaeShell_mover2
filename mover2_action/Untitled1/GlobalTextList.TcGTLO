@@ -141,6 +141,16 @@ Error"</v>
               <v n="TextDefault">"衝突回避Error"</v>
               <l n="LanguageTexts" t="ArrayList" />
             </o>
+            <o>
+              <v n="TextID">"968"</v>
+              <v n="TextDefault">"運転準備"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"378"</v>
+              <v n="TextDefault">"運転開始"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
           </l>
           <l n="Languages" t="ArrayList" />
           <v n="GuidInit">{69d59c0e-b77f-4018-8093-ce91cb8b182e}</v>
