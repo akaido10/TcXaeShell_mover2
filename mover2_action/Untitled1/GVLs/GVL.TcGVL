@@ -3,7 +3,7 @@
   <GVL Name="GVL" Id="{59d58ca0-1245-43be-8c30-d4f8da605190}">
     <Declaration><![CDATA[{attribute 'qualified_only'}
 VAR_GLOBAL CONSTANT
-	MAX_MOVER 	: INT:=2;
+	MAX_MOVER 	: INT:=3;
 	MAX_TRACK	: INT:=8;
 	MAX_STATION	: INT:=4;
 END_VAR
@@ -15,13 +15,13 @@ stArea_T1 : ST_StationParams :=(
 			fMinY:= 70, fMaxY:= 90);//初期位置・分岐地点
 stArea_T2 : ST_StationParams :=(
 			fMinX:= 580, fMaxX:= 620,
-			fMinY:= 90, fMaxY:= 110);//右ルート
+			fMinY:= 110, fMaxY:= 130);//右ルート
 stArea_T3 : ST_StationParams :=(
 			fMinX:= 340, fMaxX:= 380,
-			fMinY:= 90, fMaxY:= 110);//左ルート
+			fMinY:= 110, fMaxY:= 130);//左ルート
 stArea_T4 : ST_StationParams :=(
 			fMinX:= 100, fMaxX:= 140,
-			fMinY:= 200, fMaxY:= 240);//合流地点
+			fMinY:= 220, fMaxY:= 260);//合流地点
 END_VAR]]></Declaration>
   </GVL>
 </TcPlcObject>

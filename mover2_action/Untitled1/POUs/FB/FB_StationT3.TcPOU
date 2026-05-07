@@ -13,6 +13,7 @@ VAR_OUTPUT
 	bOccupied		: BOOL;
 	bBeforeRotate	: BOOL;
 	bReady			: BOOL;
+	bDone			: BOOL;
 END_VAR
 VAR
 	nState			: INT;
@@ -35,9 +36,10 @@ END_VAR
 	
 	20://移動
 	bMove:= TRUE;
-	nTargetTrack:= E_TrackName.T2_2_ToRotate;
+	bDone	:= FALSE;
+	nTargetTrack:= E_TrackName.T3_2_ToRotate;
 	fbMoveTrack.execute := TRUE;
-	
+
 	IF fbMoveTrack.done THEN
 		fbMoveTrack.execute:= FALSE;
 		bOccupied := FALSE;
@@ -61,20 +63,28 @@ END_VAR
 	40://T1まで移動
 	nTargetTrack:= E_TrackName.T1_1_ToRotate;
 	fbMoveTrack.execute:= TRUE;
-		nState := 100;
+	bOccupied := FALSE;
+	nState := 50;
 	
+	50:
+	IF fbMoveTrack.done THEN
+		fbMoveTrack.execute := FALSE;//移動指令を落とす
+		bReady :=TRUE;
+		bDone :=TRUE;
+		nState := 100;
+	END_IF
+
 	100://initへ戻る
-	fbMoveTrack.execute := FALSE;//移動指令を落とす
 	nState := 0;
 END_CASE
 
-IF bMove THEN
+//IF bMove THEN
 	fbMoveTrack(XpMover:= XpMover, 
 				XpTrack:= XpTrack[nTargetTrack]);
-ELSIF bMoveC THEN	
+//ELSIF bMoveC THEN	
 	fbMoveC(XpMover:= XpMover, 
 			position:= nRotatePos + 360);
-END_IF]]></ST>
+//END_IF]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>

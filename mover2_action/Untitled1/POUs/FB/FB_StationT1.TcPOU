@@ -14,6 +14,7 @@ END_VAR
 VAR_OUTPUT
 	bOccupied		: BOOL;
 	bReady			: BOOL;
+	bDone			: BOOL;
 END_VAR
 VAR
 	nState			: INT;
@@ -28,6 +29,7 @@ END_VAR
 	IF execute THEN
 		bOccupied := TRUE;//Stationの状態をOccupiedにする
 		bReady := FALSE;
+		bDone	:= FALSE;
 		nState := 10;
 	END_IF
 	
@@ -41,22 +43,28 @@ END_VAR
 	END_IF
 	
 	20://移動
-	bMove := TRUE;
-	fbMoveTrack(XpMover:= XpMover, 
-				XpTrack:= XpTrack[nTargetTrack],
-				execute := TRUE);
+	IF XpMover.MCTOPLC.SETONTRACK.SetVelo=0 THEN
+		bMove := TRUE;
+		fbMoveTrack.execute := TRUE;
+		nState := 30;
+	END_IF
+	
+	30:
 	IF fbMoveTrack.done THEN
 		fbMoveTrack.execute := FALSE;
 		bOccupied := FALSE;
 		bReady := TRUE;
 		bMove := FALSE;
+		bDone := TRUE;
 		nState := 40;
 	END_IF
 	
 	40://initへ戻る
 	nState := 0;
 END_CASE
-]]></ST>
+
+fbMoveTrack(XpMover:= XpMover, 
+		XpTrack:= XpTrack[nTargetTrack]);]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>

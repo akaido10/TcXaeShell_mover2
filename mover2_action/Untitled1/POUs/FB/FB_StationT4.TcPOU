@@ -12,6 +12,7 @@ END_VAR
 VAR_OUTPUT
 	bOccupied		: BOOL;
 	bReady			: BOOL;
+	bDone			: BOOL;
 END_VAR
 VAR
 	nState			: INT;
@@ -19,7 +20,7 @@ VAR
 	nTargetTrack	: INT;
 	fbMoveC			: FB_XpMoveC;
 	bMoveC: BOOL;
-	nRotatePos		: LREAL :=0;
+	nRotatePos		: LREAL;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -32,32 +33,42 @@ END_VAR
 	END_IF
 	
 	10:
-	bMoveC := TRUE;
-	fbMoveC.execute := TRUE;
+	IF (xpmover.MCTOPLC.SETONTRACK.SetVelo=0) THEN
+		nRotatePos := xpmover.MCTOPLC.ACT.ACTPos.c;
+		bMoveC := TRUE;
+		bDone := FALSE;
+		fbMoveC.execute := TRUE;
+	END_IF
 	
 	IF fbMoveC.done THEN
 		fbMoveC.execute := FALSE;
 		bMoveC := FALSE;
-		nState := 420;
+		nState := 20;
 	END_IF
 	
 	20://T1まで移動
-	ntargetTrack :=E_TrackName.T1_1_ToRotate;
+	ntargetTrack :=E_TrackName.T1_2_ToBranch;
 	fbMoveTrack.execute:= TRUE;
+	bOccupied:= FALSE;
+	nState := 30;
+	
+	30:
+	IF fbMoveTrack.done THEN
+		fbMoveTrack.execute := FALSE;//移動指令を落とす
+		bReady := TRUE;
+		bDone := TRUE;
 		nState := 100;
+	END_IF
 	
 	100://initへ戻る
-	fbMoveTrack.execute := FALSE;//移動指令を落とす
 	nState := 0;
 	
 END_CASE
 
-IF bMoveC THEN
-	fbMoveTrack(XpMover:= XpMover, 
-				XpTrack:= XpTrack[nTargetTrack]);
-	fbMoveC(XpMover:= XpMover, 
-			position:= nRotatePos + 360);
-END_IF]]></ST>
+fbMoveTrack(XpMover:= XpMover, 
+			XpTrack:= XpTrack[nTargetTrack]);
+fbMoveC(XpMover:= XpMover, 
+		position:= nRotatePos + 360);]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>
